@@ -5,7 +5,7 @@ const fs=require('node:fs');
 const source=fs.readFileSync('game.js','utf8');
 function declaration(name){const start=source.indexOf('function '+name+'(');let depth=0,begin=source.indexOf('{',start);for(let i=begin;i<source.length;i++){if(source[i]==='{')depth++;if(source[i]==='}'&&!--depth)return source.slice(start,i+1)}}
 const context=vm.createContext({btoa,atob,encodeURIComponent,decodeURIComponent,escape,unescape});
-vm.runInContext("const palette=['#20231c','#ef6548','#546bdd','#b951b3'];const S={horses:[],seed:123};"+['hash','random','template','encodeChallenge','decodeChallenge','cheer'].map(declaration).join('\n'),context);
+vm.runInContext("const palette=['#20231c','#ef6548','#546bdd','#b951b3'];const S={horses:[],seed:123};"+['hash','random','template','targetWindow','encodeChallenge','decodeChallenge','cheer'].map(declaration).join('\n'),context);
 const run=s=>vm.runInContext(s,context);
 test('seeded daily opponents reproduce exactly',()=>{assert.equal(run('JSON.stringify(Array.from({length:8},random(hash("2026-09-12"))))'),run('JSON.stringify(Array.from({length:8},random(hash("2026-09-12"))))'));assert.notEqual(run('hash("2026-09-12")'),run('hash("2026-09-13")'))});
 test('challenge preserves Unicode, timing, seed and art',()=>{run('S.horses[3]={name:"汗血保温杯🐴",finish:1,time:14.1234,strokes:template(1)}');assert.equal(run('decodeChallenge(encodeChallenge()).n'),'汗血保温杯🐴');assert.equal(run('decodeChallenge(encodeChallenge()).t'),14.1234);assert.equal(run('decodeChallenge(encodeChallenge()).s'),123);assert.equal(run('decodeChallenge(encodeChallenge()).d.length'),5)});
@@ -42,3 +42,4 @@ test('challenge carries drawing aspect and rejects invalid ratios',()=>{
   }
 });
 test('challenge decoder accepts the unpadded URL-safe share format',()=>{run('S.horses[3]={name:"无填充挑战",finish:1,time:14.1234,strokes:template(1),aspect:2}');const encoded=run('encodeChallenge()');assert.equal(encoded.includes('='),false);assert.equal(run('decodeChallenge(encodeChallenge()).n'),'无填充挑战')});
+test('compact QR challenge payload keeps the same race data',()=>{run('S.horses[3]={name:"扫码接战",finish:1,time:14.126,strokes:template(1),aspect:2}');assert.equal(run('decodeChallenge(encodeChallenge(60,true)).n'),'扫码接战');assert.equal(run('decodeChallenge(encodeChallenge(60,true)).a'),2);assert.ok(run('encodeChallenge(60,true).length')<run('encodeChallenge().length'))});
