@@ -72,7 +72,7 @@ function syncTarget(){const target=targetWindow(),el=document.querySelector('.ta
 function mode(m){S.mode=m;S.dailyVariant=m==='daily'?dailyChallenge():null;$('free').classList.toggle('selected',m==='free');$('daily').classList.toggle('selected',m==='daily');$('mode-desc').innerText=m==='daily'?`${dateKey()} · ${S.dailyVariant.label}\n${S.dailyVariant.rule}`:'100 米离谱短跑 · 约 20 秒\n踩准节奏，就能反超。';syncTarget()}
 $('free').onclick=()=>mode('free');$('daily').onclick=()=>mode('daily');
 function screen(n){cancelAnimationFrame(S.raf);S.screen=n;music.setScene(n);for(const k of ['draw','race','result','feedbacks'])$(k+'-screen').hidden=k!==n;window.scrollTo(0,0);if(n==='draw')draw()}
-function start(){if(!S.strokes.length)return;music.unlock();save();S.dailyVariant=S.mode==='daily'?dailyChallenge():null;syncTarget();S.seed=S.challenge?.s??(S.mode==='daily'?hash(dateKey()):Math.floor(Math.random()*4294967296));const rng=random(S.seed);S.horses=Array.from({length:3},(_,i)=>({name:['不是驴','马力全无','长话短说'][i],strokes:template(i,palette[i+1]),x:0,time:0,speed:5.4+rng()*.8,offset:rng()*6}));if(S.challenge)S.horses[0]={name:S.challenge.n+' · 影子',strokes:S.challenge.d,aspect:S.challenge.a||1,x:0,time:0,ghost:S.challenge.t};S.horses.push({name:$('name').value.trim()||'无名之马',strokes:structuredClone(S.strokes),aspect:S.aspect,petId:S.pet?.id,colors:new Set(S.strokes.map(s=>s.c)).size,x:0,time:0,player:true});S.elapsed=-3;S.combo=0;S.maxCombo=0;S.lastBeat=-1;S.boost=0;S.phase='countdown';S.last=0;S.countNumber=0;$('race-name').textContent=S.horses[3].name;$('race-mode').textContent=S.challenge?'好友挑战 · 对手是成绩配速影子':S.mode==='daily'?`每日挑战 · ${S.dailyVariant.label}`:'自由赛 / THE QUESTIONABLE DERBY';$('boost').disabled=true;$('feedback').textContent=S.dailyVariant?`今日规则：${S.dailyVariant.rule}`:'光标进入绿色区时点击 / 按空格。连点不会更快。';$('race-comment').textContent=S.dailyVariant?`今日挑战：${S.dailyVariant.label}`:'选手正在热身，物种有待确认。';screen('race');S.raf=requestAnimationFrame(loop)}
+function start(){if(!S.strokes.length)return;music.unlock();save();S.dailyVariant=S.challenge?.m?DAILY_VARIANTS.find(v=>v.id===S.challenge.m)||null:S.mode==='daily'?dailyChallenge():null;syncTarget();S.seed=S.challenge?.s??(S.mode==='daily'?hash(dateKey()):Math.floor(Math.random()*4294967296));const rng=random(S.seed);S.horses=Array.from({length:3},(_,i)=>({name:['不是驴','马力全无','长话短说'][i],strokes:template(i,palette[i+1]),x:0,time:0,speed:5.4+rng()*.8,offset:rng()*6}));if(S.challenge)S.horses[0]={name:S.challenge.n+' · 影子',strokes:S.challenge.d,aspect:S.challenge.a||1,x:0,time:0,ghost:S.challenge.t};S.horses.push({name:$('name').value.trim()||'无名之马',strokes:structuredClone(S.strokes),aspect:S.aspect,petId:S.pet?.id,colors:new Set(S.strokes.map(s=>s.c)).size,x:0,time:0,player:true});S.elapsed=-3;S.combo=0;S.maxCombo=0;S.lastBeat=-1;S.boost=0;S.phase='countdown';S.last=0;S.countNumber=0;$('race-name').textContent=S.horses[3].name;$('race-mode').textContent=S.challenge?`好友挑战 · 对手是成绩配速影子${S.dailyVariant?` · ${S.dailyVariant.label}`:''}`:S.mode==='daily'?`每日挑战 · ${S.dailyVariant.label}`:'自由赛 / THE QUESTIONABLE DERBY';$('boost').disabled=true;$('feedback').textContent=S.dailyVariant?`今日规则：${S.dailyVariant.rule}`:'光标进入绿色区时点击 / 按空格。连点不会更快。';$('race-comment').textContent=S.dailyVariant?`今日挑战：${S.dailyVariant.label}`:'选手正在热身，物种有待确认。';screen('race');S.raf=requestAnimationFrame(loop)}
 $('start').onclick=start;$('again').onclick=start;$('back').onclick=()=>{S.phase='idle';screen('draw')};$('redraw').onclick=()=>screen('draw');
 function cheer(){if(S.screen!=='race'||S.phase!=='running')return;const beat=Math.floor(S.elapsed/.8);if(S.lastBeat===beat)return;S.lastBeat=beat;const p=(S.elapsed%.8)/.8,target=targetWindow(),hit=p>=target.start&&p<=target.end;S.combo=hit?S.combo+1:0;S.maxCombo=Math.max(S.maxCombo,S.combo);const v=S.dailyVariant,base=v?.baseBoost??2.7,bonus=v?.comboBoost??.22,cap=v?.maxBoost??4.6;S.boost=hit?Math.min(cap,base+S.combo*bonus):.4;$('feedback').textContent=hit?`漂亮！连击 × ${S.combo} · ${S.combo>=3?'马力全开！':'继续保持节奏'}`:'早了或晚了，再找找节奏。';tone(hit?660+Math.min(S.combo,6)*60:180)}
 $('boost').onclick=cheer;window.addEventListener('keydown',e=>{if(e.code==='Space'&&S.screen==='race'&&!e.repeat&&e.target.tagName!=='BUTTON'){e.preventDefault();cheer()}});
@@ -146,7 +146,7 @@ async function createClip(){
 $('save-clip').onclick=async()=>{try{const blob=await createClip(),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='这也算马-动态战绩.webm';a.click();setTimeout(()=>URL.revokeObjectURL(url),5000);toast('动态战绩已生成，发给朋友看这匹怪马。')}catch{toast('当前浏览器不支持动态短片，已可保存静态战绩。')}};
 
 // A bounded, versioned URL payload. Shared drawings are downsampled; local originals stay intact.
-function encodeChallenge(pointBudget=200,compact=false){const p=S.horses[3],budget=Math.max(2,Math.floor(pointBudget/p.strokes.length));const d=p.strokes.map(s=>({c:s.c,p:s.p.filter((_,i)=>i===0||i===s.p.length-1||i%Math.max(1,Math.ceil(s.p.length/budget))===0).map(a=>a.map(n=>Math.round(n*1000)/1000))}));const payload=compact?[2,p.name,Math.round(p.time*100),S.seed,Math.round((p.aspect||1)*1000),d.map(s=>[palette.indexOf(s.c),s.p.map(a=>a.map(n=>Math.round(n*1000)))])]:{v:1,n:p.name,t:+p.time.toFixed(4),s:S.seed,a:p.aspect||1,d};return btoa(unescape(encodeURIComponent(JSON.stringify(payload)))).replaceAll('+','-').replaceAll('/','_').replaceAll('=','')}
+function encodeChallenge(pointBudget=200,compact=false){const p=S.horses[3],budget=Math.max(2,Math.floor(pointBudget/p.strokes.length));const d=p.strokes.map(s=>({c:s.c,p:s.p.filter((_,i)=>i===0||i===s.p.length-1||i%Math.max(1,Math.ceil(s.p.length/budget))===0).map(a=>a.map(n=>Math.round(n*1000)/1000))}));const variant=S.dailyVariant?.id||null;const payload=compact?[2,p.name,Math.round(p.time*100),S.seed,Math.round((p.aspect||1)*1000),d.map(s=>[palette.indexOf(s.c),s.p.map(a=>a.map(n=>Math.round(n*1000)))]),variant]:{v:1,n:p.name,t:+p.time.toFixed(4),s:S.seed,a:p.aspect||1,m:variant,d};return btoa(unescape(encodeURIComponent(JSON.stringify(payload)))).replaceAll('+','-').replaceAll('/','_').replaceAll('=','')}
 function decodeChallenge(raw,local=false){
   if(raw.length>(local?8000000:22000))throw Error('size');
   let encoded=raw.replaceAll('-','+').replaceAll('_','/');
@@ -157,10 +157,11 @@ function decodeChallenge(raw,local=false){
       c:palette[s[0]],
       p:Array.isArray(s[1])?s[1].map(a=>[Number(a[0])/1000,Number(a[1])/1000]):[]
     })):[];
-    v={v:1,n:v[1],t:Number(v[2])/100,s:v[3],a:Number(v[4])/1000,d:compactStrokes};
+    v={v:1,n:v[1],t:Number(v[2])/100,s:v[3],a:Number(v[4])/1000,m:v[6]||null,d:compactStrokes};
   }
   if(v.v!==1||typeof v.n!=='string'||v.n.length>18||!Number.isFinite(v.t)||v.t<5||v.t>60||!Number.isInteger(v.s)||v.s<0||v.s>4294967295||!Array.isArray(v.d)||!v.d.length||v.d.length>80)throw Error('invalid');
   if(v.a!==undefined&&(!Number.isFinite(v.a)||v.a<.01||v.a>100))throw Error('aspect');
+  if(v.m!==undefined&&v.m!==null&& (typeof v.m!=='string'||v.m.length>20))throw Error('variant');
   let total=0;
   for(const s of v.d){
     if(!palette.includes(s.c)||!Array.isArray(s.p)||!s.p.length)throw Error('stroke');
@@ -225,6 +226,14 @@ const stored=readSave();if(Array.isArray(stored.strokes)){try{S.strokes=decodeCh
 if(Number.isFinite(stored.aspect)&&stored.aspect>=.01&&stored.aspect<=100)S.aspect=stored.aspect;
 S.pet=ADOPTION_CATALOG.find(p=>p.id===stored.petId)||null;
 if(typeof stored.name==='string')$('name').value=stored.name.slice(0,18);S.best=Number.isFinite(stored.best)&&stored.best>0?stored.best:null;if(S.best)$('best').textContent=`本机最佳 ${S.best.toFixed(2)} 秒 · 再快一点，就一点。`;
-if(location.hash.startsWith('#race=')){try{S.challenge=decodeChallenge(location.hash.slice(6));S.strokes=[];S.aspect=null;S.pet=null;$('name').value='接战选手';$('challenge-banner').hidden=false;$('challenge-copy').textContent=`朋友的「${S.challenge.n}」跑了 ${S.challenge.t.toFixed(2)} 秒。画一匹马，打败它的成绩影子！`;$('free').disabled=$('daily').disabled=true;$('mode-desc').textContent='好友挑战 · 同一赛道种子 · 配速影子';$('accept-challenge').onclick=()=>$('drawing').scrollIntoView({behavior:'smooth',block:'center'})}catch{toast('这个挑战链接不完整，先自由赛一场吧。')}}
+if(location.hash.startsWith('#race=')){
+  try{
+    S.challenge=decodeChallenge(location.hash.slice(6));
+    S.dailyVariant=S.challenge.m?DAILY_VARIANTS.find(v=>v.id===S.challenge.m)||null:null;
+    syncTarget();S.strokes=[];S.aspect=null;S.pet=null;$('name').value='接战选手';$('challenge-banner').hidden=false;
+    $('challenge-copy').textContent=`朋友的「${S.challenge.n}」跑了 ${S.challenge.t.toFixed(2)} 秒。画一匹马，打败它的成绩影子！${S.dailyVariant?` 今日规则：${S.dailyVariant.label} · ${S.dailyVariant.rule}`:''}`;
+    $('free').disabled=$('daily').disabled=true;$('mode-desc').textContent=`好友挑战 · 同一赛道种子 · 配速影子${S.dailyVariant?` · ${S.dailyVariant.label}`:''}`;$('accept-challenge').onclick=()=>$('drawing').scrollIntoView({behavior:'smooth',block:'center'})
+  }catch{toast('这个挑战链接不完整，先自由赛一场吧。')}
+}
 if(location.hash==='#feedbacks'){screen('feedbacks');renderFeedbacks()}
 new ResizeObserver(()=>{if(S.screen==='draw')draw()}).observe($('drawing').parentElement);draw();
