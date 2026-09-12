@@ -92,10 +92,12 @@ function drawQr(ctx,text,x,y,size){
     const qr=new window.QRCode(0,window.QRCodeErrorCorrectLevel.L);
     qr.addData(text);qr.make();
     const count=qr.getModuleCount(),quiet=4,module=size/(count+quiet*2);
-    ctx.save();ctx.fillStyle='#fafbf3';ctx.fillRect(x,y,size,size);ctx.fillStyle='#20231c';
+    ctx.save();ctx.imageSmoothingEnabled=false;ctx.fillStyle='#fafbf3';ctx.fillRect(x,y,size,size);ctx.fillStyle='#20231c';
     for(let row=0;row<count;row++)for(let col=0;col<count;col++)if(qr.isDark(row,col)){
+      // Snap both edges to the same integer grid so every module stays square and scan-friendly.
       const left=Math.round(x+(col+quiet)*module),top=Math.round(y+(row+quiet)*module);
-      ctx.fillRect(left,top,Math.ceil(module),Math.ceil(module));
+      const right=Math.round(x+(col+quiet+1)*module),bottom=Math.round(y+(row+quiet+1)*module);
+      ctx.fillRect(left,top,Math.max(1,right-left),Math.max(1,bottom-top));
     }
     ctx.restore();return true;
   }catch{return false}
@@ -105,22 +107,23 @@ function poster(){
   c.fillStyle='#dfff4f';c.fillRect(0,0,W,H);c.fillStyle='#fafbf3';c.fillRect(34,34,W-68,H-68);c.fillStyle='#20231c';c.textAlign='center';
   c.font='bold 25px sans-serif';c.fillText('这也算马？  /  DOODLE DERBY',W/2,92);
   c.font='16px monospace';c.fillText('NO. '+S.receipt.serial,W/2,124);
-  c.font='bold 28px sans-serif';c.fillText('我画的这玩意，居然跑完了 100 米。',W/2,192);
-  const titleLines=S.receipt.title.split('\n');c.font='900 76px sans-serif';titleLines.forEach((line,i)=>c.fillText(line,W/2,292+i*82));
-  c.font='900 166px Arial';c.fillText(p.time.toFixed(2)+'s',W/2,530);
-  c.font='bold 26px sans-serif';c.fillText(`#${S.place}  /  最高连击 ${S.maxCombo}`,W/2,582);
+  c.font='bold 28px sans-serif';c.fillText('我画的这玩意，居然跑完了 100 米。',W/2,190);
+  const titleLines=S.receipt.title.split('\n');c.font='900 72px sans-serif';titleLines.forEach((line,i)=>c.fillText(line,W/2,278+i*76));
+  c.font='900 150px Arial';c.fillText(p.time.toFixed(2)+'s',W/2,500);
+  c.font='bold 25px sans-serif';c.fillText(`#${S.place}  /  最高连击 ${S.maxCombo}`,W/2,550);
+  c.strokeStyle='#d6dbbd';c.lineWidth=2;c.beginPath();c.moveTo(120,590);c.lineTo(960,590);c.stroke();
   if(S.challenge){
-    horse(c,S.challenge.d,325,820,320,0,true,S.challenge.a||1);horse(c,p.strokes,755,820,320,0,true,p.aspect||1);
-    c.font='bold 20px sans-serif';c.fillText('朋友的马',325,920);c.fillText('你的马',755,920);
-  }else horse(c,p.strokes,W/2,800,650,0,true,p.aspect||1);
-  c.fillStyle='#dfff4f';c.fillRect(90,1000,900,166);c.fillStyle='#20231c';
-  c.font='bold 31px sans-serif';c.fillText(S.receipt.taunt,540,1055,820);
-  c.font='24px sans-serif';c.fillText('你画的，能跑几秒？扫码接战。',540,1106,820);
-  c.font='18px sans-serif';c.fillText(`${S.challenge?'好友挑战':S.mode==='daily'?`每日挑战 · ${S.dailyVariant?.label||''}`:'自由赛'}  ·  ${S.receipt.metric}`,540,1142,820);
-  const shareUrl=new URL(location.href);shareUrl.hash='race='+encodeChallenge(60,true);
+    horse(c,S.challenge.d,325,850,260,0,true,S.challenge.a||1);horse(c,p.strokes,755,850,260,0,true,p.aspect||1);
+    c.font='bold 20px sans-serif';c.fillText('朋友的马',325,940);c.fillText('你的马',755,940);
+  }else horse(c,p.strokes,W/2,930,480,0,true,p.aspect||1);
+  c.fillStyle='#dfff4f';c.fillRect(90,1030,900,150);c.fillStyle='#20231c';
+  c.font='bold 31px sans-serif';c.fillText(S.receipt.taunt,540,1082,820);
+  c.font='24px sans-serif';c.fillText('你画的，能跑几秒？扫码接战。',540,1128,820);
+  c.font='18px sans-serif';c.fillText(`${S.challenge?'好友挑战':S.mode==='daily'?`每日挑战 · ${S.dailyVariant?.label||''}`:'自由赛'}  ·  ${S.receipt.metric}`,540,1162,820);
+  // Keep the QR payload intentionally tiny so the same 138px mark has 2px+ modules on phones.
+  const shareUrl=new URL(location.origin+location.pathname);shareUrl.hash='race='+encodeChallenge(12,true);
   if(drawQr(c,shareUrl.href,850,1230,138)){c.font='bold 14px sans-serif';c.fillText('扫码接战',919,1389)}
-  c.textAlign='left';c.font='16px sans-serif';c.fillText('Inspired by X @yungcontent',90,1398);c.font='14px sans-serif';c.fillText('感谢创意启发 · 这匹马还在进化',90,1430);
-  c.textAlign='center';c.font='15px Arial';c.fillText('DOODLE DERBY  /  发给一个不服的人',W/2,1462);
+  c.font='15px Arial';c.fillText('DOODLE DERBY  /  发给一个不服的人',W/2,1462);
 }
 function clipFrame(c,ctx,t){
   const w=c.width,h=c.height,progress=Math.min(1,t/4.8);
@@ -139,7 +142,6 @@ function drawSocialFrame(c,ctx,t){
   ctx.font='bold 16px sans-serif';ctx.fillText(`#${S.place}  ${p.name}`,w/2,122);
   ctx.save();ctx.translate(42+progress*(w-84),220);horse(ctx,p.strokes,0,0,125,progress*10,false,p.aspect||1);ctx.restore();
   ctx.fillStyle='#dfff4f';ctx.fillRect(24,300,w-48,70);ctx.fillStyle='#20231c';ctx.font='bold 15px sans-serif';ctx.fillText(S.receipt.title.replace(/\n/g,' '),w/2,326,w-56);ctx.font='12px sans-serif';ctx.fillText(S.receipt.taunt,w/2,350,w-56);
-  ctx.font='11px sans-serif';ctx.fillText('Inspired by X @yungcontent',w/2,h-25);
 }
 function preferredVideoMime(){
   if(!window.MediaRecorder||typeof MediaRecorder.isTypeSupported!=='function')return '';
