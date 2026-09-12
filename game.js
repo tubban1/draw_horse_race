@@ -101,29 +101,26 @@ function drawQr(ctx,text,x,y,size){
   }catch{return false}
 }
 function poster(){
-  const c=$('poster').getContext('2d'),p=S.horses[3];
-  c.fillStyle='#fafbf3';c.fillRect(0,0,720,860);c.fillStyle='#20231c';c.textAlign='center';
-  c.font='bold 23px sans-serif';c.fillText(S.receipt.badge,360,48);
-  c.font='16px monospace';c.fillText('NO. '+S.receipt.serial,360,78);
-  const shareUrl=new URL(location.href);shareUrl.hash='race='+encodeChallenge(60,true);
-  if(drawQr(c,shareUrl.href,480,50,220)){c.font='bold 12px sans-serif';c.fillText('扫码接战',590,286)}
-  c.font='900 112px Arial';c.fillText('#'+S.place,360,190);
+  const c=$('poster').getContext('2d'),p=S.horses[3],W=1080,H=1500;
+  c.fillStyle='#dfff4f';c.fillRect(0,0,W,H);c.fillStyle='#fafbf3';c.fillRect(34,34,W-68,H-68);c.fillStyle='#20231c';c.textAlign='center';
+  c.font='bold 25px sans-serif';c.fillText('这也算马？  /  DOODLE DERBY',W/2,92);
+  c.font='16px monospace';c.fillText('NO. '+S.receipt.serial,W/2,124);
+  c.font='bold 28px sans-serif';c.fillText('我画的这玩意，居然跑完了 100 米。',W/2,192);
+  const titleLines=S.receipt.title.split('\n');c.font='900 76px sans-serif';titleLines.forEach((line,i)=>c.fillText(line,W/2,292+i*82));
+  c.font='900 166px Arial';c.fillText(p.time.toFixed(2)+'s',W/2,530);
+  c.font='bold 26px sans-serif';c.fillText(`#${S.place}  /  最高连击 ${S.maxCombo}`,W/2,582);
   if(S.challenge){
-    c.font='bold 16px sans-serif';c.fillText('好友挑战 · 同一条赛道',360,315);
-    horse(c,S.challenge.d,220,395,245,0,true,S.challenge.a||1);
-    horse(c,p.strokes,500,395,245,0,true,p.aspect||1);
-    c.font='bold 20px sans-serif';c.fillText('朋友的马',220,492);c.fillText('你的马',500,492);
-  }else{
-    horse(c,p.strokes,360,430,440,0,true,p.aspect||1);
-  }
-  c.fillStyle='#20231c';c.font='bold 34px sans-serif';c.fillText(p.name,360,535,640);
-  c.font='22px sans-serif';c.fillText(S.receipt.metric,360,570);
-  c.font='900 76px Arial';c.fillText(p.time.toFixed(2)+'s',360,655);
-  c.font='20px sans-serif';c.fillText(`100 米  /  最高连击 ${S.maxCombo}  /  ${S.challenge?'好友挑战':S.mode==='daily'?`每日挑战 · ${S.dailyVariant?.label||''}`:'自由赛'}`,360,700);
-  c.fillStyle='#dfff4f';c.fillRect(40,735,640,80);c.fillStyle='#20231c';
-  c.font='bold 26px sans-serif';c.fillText(S.receipt.title.replace(/\n/g,' '),360,768,625);
-  c.font='18px sans-serif';c.fillText(S.receipt.taunt,360,798,625);
-  c.font='16px Arial';c.fillText('DOODLE DERBY  /  这也算马？',360,842);
+    horse(c,S.challenge.d,325,820,320,0,true,S.challenge.a||1);horse(c,p.strokes,755,820,320,0,true,p.aspect||1);
+    c.font='bold 20px sans-serif';c.fillText('朋友的马',325,920);c.fillText('你的马',755,920);
+  }else horse(c,p.strokes,W/2,800,650,0,true,p.aspect||1);
+  c.fillStyle='#dfff4f';c.fillRect(90,1000,900,166);c.fillStyle='#20231c';
+  c.font='bold 31px sans-serif';c.fillText(S.receipt.taunt,540,1055,820);
+  c.font='24px sans-serif';c.fillText('你画的，能跑几秒？扫码接战。',540,1106,820);
+  c.font='18px sans-serif';c.fillText(`${S.challenge?'好友挑战':S.mode==='daily'?`每日挑战 · ${S.dailyVariant?.label||''}`:'自由赛'}  ·  ${S.receipt.metric}`,540,1142,820);
+  const shareUrl=new URL(location.href);shareUrl.hash='race='+encodeChallenge(60,true);
+  if(drawQr(c,shareUrl.href,850,1230,138)){c.font='bold 14px sans-serif';c.fillText('扫码接战',919,1389)}
+  c.textAlign='left';c.font='16px sans-serif';c.fillText('Inspired by X @yungcontent',90,1398);c.font='14px sans-serif';c.fillText('感谢创意启发 · 这匹马还在进化',90,1430);
+  c.textAlign='center';c.font='15px Arial';c.fillText('DOODLE DERBY  /  发给一个不服的人',W/2,1462);
 }
 function clipFrame(c,ctx,t){
   const w=c.width,h=c.height,progress=Math.min(1,t/4.8);
@@ -135,15 +132,43 @@ function clipFrame(c,ctx,t){
   ctx.save();ctx.translate(70+progress*(w-140),510);horse(ctx,S.horses[3].strokes,0,0,250,progress*10,false,S.horses[3].aspect||1);ctx.restore();
   ctx.fillStyle='#dfff4f';ctx.fillRect(48,650,w-96,120);ctx.fillStyle='#20231c';ctx.font='bold 28px sans-serif';ctx.fillText(S.receipt.title.replace(/\n/g,' '),w/2,698,w-120);ctx.font='19px sans-serif';ctx.fillText(S.receipt.taunt,w/2,738,w-120);ctx.font='16px Arial';ctx.fillText('DOODLE DERBY  /  这也算马？',w/2,850);
 }
-async function createClip(){
-  if(!window.MediaRecorder||!HTMLCanvasElement.prototype.captureStream)throw Error('unsupported');
-  const canvas=document.createElement('canvas');canvas.width=540;canvas.height=900;const ctx=canvas.getContext('2d');
-  const stream=canvas.captureStream(30),mime=MediaRecorder.isTypeSupported('video/webm;codecs=vp9')?'video/webm;codecs=vp9':'video/webm';
-  const recorder=new MediaRecorder(stream,{mimeType:mime}),chunks=[];recorder.ondataavailable=e=>e.data.size&&chunks.push(e.data);
-  const result=new Promise((resolve,reject)=>{recorder.onstop=()=>resolve(new Blob(chunks,{type:mime}));recorder.onerror=reject});recorder.start();
-  const started=performance.now();const draw=now=>{const t=(now-started)/1000;clipFrame(canvas,ctx,t);if(t<4.8)requestAnimationFrame(draw);else recorder.stop()};requestAnimationFrame(draw);return result;
+function drawSocialFrame(c,ctx,t){
+  const w=c.width,h=c.height,progress=Math.min(1,t/4.8),p=S.horses[3];
+  ctx.fillStyle='#dfff4f';ctx.fillRect(0,0,w,h);ctx.fillStyle='#fafbf3';ctx.fillRect(12,12,w-24,h-24);ctx.fillStyle='#20231c';ctx.textAlign='center';
+  ctx.font='bold 13px sans-serif';ctx.fillText('这也算马？  /  DOODLE DERBY',w/2,38);ctx.font='900 34px Arial';ctx.fillText(p.time.toFixed(2)+'s',w/2,94);
+  ctx.font='bold 16px sans-serif';ctx.fillText(`#${S.place}  ${p.name}`,w/2,122);
+  ctx.save();ctx.translate(42+progress*(w-84),220);horse(ctx,p.strokes,0,0,125,progress*10,false,p.aspect||1);ctx.restore();
+  ctx.fillStyle='#dfff4f';ctx.fillRect(24,300,w-48,70);ctx.fillStyle='#20231c';ctx.font='bold 15px sans-serif';ctx.fillText(S.receipt.title.replace(/\n/g,' '),w/2,326,w-56);ctx.font='12px sans-serif';ctx.fillText(S.receipt.taunt,w/2,350,w-56);
+  ctx.font='11px sans-serif';ctx.fillText('Inspired by X @yungcontent',w/2,h-25);
 }
-$('save-clip').onclick=async()=>{try{const blob=await createClip(),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='这也算马-动态战绩.webm';a.click();setTimeout(()=>URL.revokeObjectURL(url),5000);toast('动态战绩已生成，发给朋友看这匹怪马。')}catch{toast('当前浏览器不支持动态短片，已可保存静态战绩。')}};
+function preferredVideoMime(){
+  if(!window.MediaRecorder)return '';
+  return ['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4'].find(type=>MediaRecorder.isTypeSupported(type))||'';
+}
+async function createGif(){
+  if(!window.gifenc)throw Error('gif-unsupported');
+  const canvas=document.createElement('canvas');canvas.width=270;canvas.height=450;const ctx=canvas.getContext('2d'),gif=window.gifenc.GIFEncoder();
+  for(let frame=0;frame<8;frame++){
+    drawSocialFrame(canvas,ctx,frame*.6);const rgba=ctx.getImageData(0,0,canvas.width,canvas.height).data;const palette=window.gifenc.quantize(rgba,64,{format:'rgb444'});const index=window.gifenc.applyPalette(rgba,palette,'rgb444');gif.writeFrame(index,canvas.width,canvas.height,{palette,delay:600,repeat:0});
+  }
+  gif.finish();return new Blob([gif.bytes()],{type:'image/gif'});
+}
+async function createClip(){
+  const mime=preferredVideoMime();
+  if(!mime)return {blob:await createGif(),extension:'gif',mime:'image/gif'};
+  if(!HTMLCanvasElement.prototype.captureStream)throw Error('unsupported');
+  const canvas=document.createElement('canvas');canvas.width=540;canvas.height=900;const ctx=canvas.getContext('2d'),stream=canvas.captureStream(30),recorder=new MediaRecorder(stream,{mimeType:mime}),chunks=[];
+  recorder.ondataavailable=e=>e.data.size&&chunks.push(e.data);
+  const blob=await new Promise((resolve,reject)=>{recorder.onstop=()=>resolve(new Blob(chunks,{type:mime}));recorder.onerror=reject;recorder.start();const started=performance.now();const draw=now=>{const t=(now-started)/1000;clipFrame(canvas,ctx,t);if(t<4.8)requestAnimationFrame(draw);else recorder.stop()};requestAnimationFrame(draw)});
+  return {blob,extension:'mp4',mime};
+}
+async function shareOrDownload(blob,filename,mime,title,text){
+  const file=new File([blob],filename,{type:mime});
+  if(navigator.share&&navigator.canShare?.({files:[file]})){try{await navigator.share({title,text,files:[file]});return 'shared'}catch(error){if(error?.name==='AbortError')return 'cancelled'}}
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),5000);return 'downloaded';
+}
+$('save-clip').textContent=preferredVideoMime()?'生成朋友圈视频 MP4 ↗':'生成朋友圈动图 GIF ↗';
+$('save-clip').onclick=async()=>{try{const result=await createClip(),action=await shareOrDownload(result.blob,`这也算马-朋友圈.${result.extension}`,result.mime,`「${S.horses[3].name}」的离谱战绩`,'我画的这玩意儿，跑完了100米。');if(action==='shared')toast(result.extension==='mp4'?'已打开分享面板，可直接发朋友圈。':'已打开分享面板，可直接发给朋友。');else if(action==='downloaded')toast(result.extension==='mp4'?'MP4 已下载，可发到朋友圈。':'GIF 动图已下载，可发给朋友。')}catch{toast('动态分享生成失败，请先保存静态海报。')}};
 
 // A bounded, versioned URL payload. Shared drawings are downsampled; local originals stay intact.
 function encodeChallenge(pointBudget=200,compact=false){const p=S.horses[3],budget=Math.max(2,Math.floor(pointBudget/p.strokes.length));const d=p.strokes.map(s=>({c:s.c,p:s.p.filter((_,i)=>i===0||i===s.p.length-1||i%Math.max(1,Math.ceil(s.p.length/budget))===0).map(a=>a.map(n=>Math.round(n*1000)/1000))}));const variant=S.dailyVariant?.id||null;const payload=compact?[2,p.name,Math.round(p.time*100),S.seed,Math.round((p.aspect||1)*1000),d.map(s=>[palette.indexOf(s.c),s.p.map(a=>a.map(n=>Math.round(n*1000)))]),variant]:{v:1,n:p.name,t:+p.time.toFixed(4),s:S.seed,a:p.aspect||1,m:variant,d};return btoa(unescape(encodeURIComponent(JSON.stringify(payload)))).replaceAll('+','-').replaceAll('/','_').replaceAll('=','')}
@@ -196,7 +221,14 @@ $('share').onclick=async()=>{
   $('share-note').textContent=['localhost','127.0.0.1',''].includes(location.hostname)?'当前为本地试玩地址。部署到公开网址后，朋友才能在自己的设备打开链接。':'可复制文案，也可以复制链接单独发给朋友。';$('share-dialog').showModal();
 };
 $('copy').onclick=async()=>{try{await navigator.clipboard.writeText($('share-copy').value);toast('战绩文案已复制，去找一位不服的朋友。')}catch{$('share-copy').focus();$('share-copy').select();toast('请长按或按 Ctrl/Cmd+C 复制战绩。')}};
-$('save').onclick=()=>{$('poster').toBlob(blob=>{if(!blob)return toast('生成失败，请再试一次。');const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='这也算马-战绩.png';a.click();setTimeout(()=>URL.revokeObjectURL(u),5000);toast('战绩海报已生成。')},'image/png')};
+function savePoster(){
+  $('poster').toBlob(async blob=>{
+    if(!blob)return toast('生成失败，请再试一次。');
+    const action=await shareOrDownload(blob,'这也算马-战绩.png','image/png','这也算马？离谱战绩',`我画的这玩意儿，跑完了100米。${new URL(location.href).origin}`);
+    if(action==='shared')toast('已打开分享面板，选择“存储图像”即可进入相册。');else if(action==='downloaded')toast('海报已下载，手机上可选择存储到相册。');
+  },'image/png');
+}
+$('save').onclick=savePoster;
 const FEEDBACK_KEY='derby-feedbacks-v1',FEEDBACK_TOPICS={idea:'怪点子',bug:'问题反馈',share:'分享建议',other:'其他'};
 function readFeedbacks(){try{const value=JSON.parse(localStorage.getItem(FEEDBACK_KEY));return Array.isArray(value)?value:[]}catch{return[]}}
 function writeFeedbacks(items){try{localStorage.setItem(FEEDBACK_KEY,JSON.stringify(items));return true}catch{return false}}
