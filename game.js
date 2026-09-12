@@ -59,7 +59,7 @@ function random(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(
 function dateKey(){return new Date().toISOString().slice(0,10)}
 function mode(m){S.mode=m;$('free').classList.toggle('selected',m==='free');$('daily').classList.toggle('selected',m==='daily');$('mode-desc').innerText=m==='daily'?`${dateKey()} · 全球同一赛道\n每天一场新挑战（UTC 更新）`:'100 米离谱短跑 · 约 20 秒\n踩准节奏，就能反超。'}
 $('free').onclick=()=>mode('free');$('daily').onclick=()=>mode('daily');
-function screen(n){cancelAnimationFrame(S.raf);S.screen=n;music.setScene(n);for(const k of ['draw','race','result'])$(k+'-screen').hidden=k!==n;window.scrollTo(0,0);if(n==='draw')draw()}
+function screen(n){cancelAnimationFrame(S.raf);S.screen=n;music.setScene(n);for(const k of ['draw','race','result','feedbacks'])$(k+'-screen').hidden=k!==n;window.scrollTo(0,0);if(n==='draw')draw()}
 function start(){if(!S.strokes.length)return;music.unlock();save();S.seed=S.challenge?.s??(S.mode==='daily'?hash(dateKey()):Math.floor(Math.random()*4294967296));const rng=random(S.seed);S.horses=Array.from({length:3},(_,i)=>({name:['不是驴','马力全无','长话短说'][i],strokes:template(i,palette[i+1]),x:0,time:0,speed:5.4+rng()*.8,offset:rng()*6}));if(S.challenge)S.horses[0]={name:S.challenge.n+' · 影子',strokes:S.challenge.d,aspect:S.challenge.a||1,x:0,time:0,ghost:S.challenge.t};S.horses.push({name:$('name').value.trim()||'无名之马',strokes:structuredClone(S.strokes),aspect:S.aspect,petId:S.pet?.id,x:0,time:0,player:true});S.elapsed=-3;S.combo=0;S.maxCombo=0;S.lastBeat=-1;S.boost=0;S.phase='countdown';S.last=0;S.countNumber=0;$('race-name').textContent=S.horses[3].name;$('race-mode').textContent=S.challenge?'好友挑战 · 对手是成绩配速影子':S.mode==='daily'?`每日挑战 / ${dateKey()}`:'自由赛 / THE QUESTIONABLE DERBY';$('boost').disabled=true;$('feedback').textContent='光标进入绿色区时点击 / 按空格。连点不会更快。';$('race-comment').textContent='选手正在热身，物种有待确认。';screen('race');S.raf=requestAnimationFrame(loop)}
 $('start').onclick=start;$('again').onclick=start;$('back').onclick=()=>{S.phase='idle';screen('draw')};$('redraw').onclick=()=>screen('draw');
 function cheer(){if(S.screen!=='race'||S.phase!=='running')return;const beat=Math.floor(S.elapsed/.8);if(S.lastBeat===beat)return;S.lastBeat=beat;const p=(S.elapsed%.8)/.8;const hit=p>=.72&&p<=.96;S.combo=hit?S.combo+1:0;S.maxCombo=Math.max(S.combo,S.maxCombo);S.boost=hit?Math.min(4.6,2.7+S.combo*.22):.4;$('feedback').textContent=hit?`漂亮！连击 × ${S.combo} · ${S.combo>=3?'马力全开！':'继续保持节奏'}`:'早了或晚了，再找找节奏。';tone(hit?660+Math.min(S.combo,6)*60:180)}
@@ -74,11 +74,27 @@ $('result-title').textContent=S.receipt.title;
 $('result-desc').textContent=`${S.receipt.intro}\n${S.receipt.stats}\n${S.receipt.performance}`;
 $('challenge-result').textContent=S.receipt.verdict;
 screen('result');poster();music.effect('finish',S.place)}
+function drawQr(ctx,text,x,y,size){
+  if(!window.QRCode||!window.QRCodeErrorCorrectLevel)return false;
+  try{
+    const qr=new window.QRCode(0,window.QRCodeErrorCorrectLevel.L);
+    qr.addData(text);qr.make();
+    const count=qr.getModuleCount(),quiet=4,module=size/(count+quiet*2);
+    ctx.save();ctx.fillStyle='#fafbf3';ctx.fillRect(x,y,size,size);ctx.fillStyle='#20231c';
+    for(let row=0;row<count;row++)for(let col=0;col<count;col++)if(qr.isDark(row,col)){
+      const left=Math.round(x+(col+quiet)*module),top=Math.round(y+(row+quiet)*module);
+      ctx.fillRect(left,top,Math.ceil(module),Math.ceil(module));
+    }
+    ctx.restore();return true;
+  }catch{return false}
+}
 function poster(){
   const c=$('poster').getContext('2d'),p=S.horses[3];
   c.fillStyle='#fafbf3';c.fillRect(0,0,720,860);c.fillStyle='#20231c';c.textAlign='center';
   c.font='bold 23px sans-serif';c.fillText(S.receipt.badge,360,48);
   c.font='16px monospace';c.fillText('NO. '+S.receipt.serial,360,78);
+  const shareUrl=new URL(location.href);shareUrl.hash='race='+encodeChallenge();
+  if(drawQr(c,shareUrl.href,585,88,100)){c.font='bold 12px sans-serif';c.fillText('扫码接战',635,205)}
   c.font='900 112px Arial';c.fillText('#'+S.place,360,190);
   if(S.challenge){
     c.font='bold 16px sans-serif';c.fillText('好友挑战 · 同一条赛道',360,230);
@@ -145,9 +161,35 @@ $('share').onclick=async()=>{
 };
 $('copy').onclick=async()=>{try{await navigator.clipboard.writeText($('share-copy').value);toast('战绩文案已复制，去找一位不服的朋友。')}catch{$('share-copy').focus();$('share-copy').select();toast('请长按或按 Ctrl/Cmd+C 复制战绩。')}};
 $('save').onclick=()=>{$('poster').toBlob(blob=>{if(!blob)return toast('生成失败，请再试一次。');const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='这也算马-战绩.png';a.click();setTimeout(()=>URL.revokeObjectURL(u),5000);toast('战绩海报已生成。')},'image/png')};
+const FEEDBACK_KEY='derby-feedbacks-v1',FEEDBACK_TOPICS={idea:'怪点子',bug:'问题反馈',share:'分享建议',other:'其他'};
+function readFeedbacks(){try{const value=JSON.parse(localStorage.getItem(FEEDBACK_KEY));return Array.isArray(value)?value:[]}catch{return[]}}
+function writeFeedbacks(items){try{localStorage.setItem(FEEDBACK_KEY,JSON.stringify(items));return true}catch{return false}}
+function renderFeedbacks(){
+  const list=$('feedback-list'),items=readFeedbacks();if(!list)return;
+  $('feedback-summary').textContent=items.length?`${items.length} 条反馈 · 最新一条优先`:'暂时还没有反馈。';
+  if(!items.length){const empty=document.createElement('p');empty.className='feedback-empty';empty.textContent='等一位选手把想法投进来。';list.replaceChildren(empty);return}
+  list.replaceChildren(...items.map(item=>{
+    const card=document.createElement('article');card.className='feedback-card';
+    const meta=document.createElement('div');meta.className='feedback-card-meta';
+    const time=new Date(item.at);const when=Number.isNaN(time.getTime())?'时间未知':time.toLocaleString('zh-CN');
+    meta.textContent=`${'★'.repeat(clamp(Number(item.rating)||0,0,5))}${'☆'.repeat(5-clamp(Number(item.rating)||0,0,5))} · ${FEEDBACK_TOPICS[item.topic]||'其他'} · ${when}`;
+    const message=document.createElement('p');message.textContent=item.message||'';
+    const context=document.createElement('small');context.textContent=[item.horse?`马：${item.horse}`:'',item.mode?`模式：${item.mode}`:'',Number.isFinite(item.time)?`${item.time.toFixed(2)} 秒`:'' ].filter(Boolean).join('  /  ');
+    card.append(meta,message,context);return card;
+  }));
+}
+$('feedback-open').onclick=()=>{const d=$('feedback-dialog');$('feedback-message').value='';if(typeof d.showModal==='function')d.showModal();else toast('当前浏览器暂不支持反馈窗口。')};
+$('feedback-submit').onclick=()=>{
+  const message=$('feedback-message').value.trim();if(message.length<2)return toast('先写两句，马厩才知道怎么改。');
+  const p=S.horses[3],items=readFeedbacks();items.unshift({id:`f-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`,at:new Date().toISOString(),rating:Number($('feedback-rating').value)||5,topic:$('feedback-topic').value,message,horse:p?.name||'',mode:S.challenge?'好友挑战':S.mode==='daily'?'每日挑战':'自由赛',place:S.place,time:p?.time||null,combo:S.maxCombo||0});
+  if(!writeFeedbacks(items.slice(0,200)))return toast('这次反馈没存下，请稍后再试。');
+  $('feedback-dialog').close();renderFeedbacks();toast('反馈已投进马厩，谢谢你救了这匹马。');
+};
+$('feedback-export').onclick=()=>{const blob=new Blob([JSON.stringify(readFeedbacks(),null,2)],{type:'application/json'}),u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='doodle-derby-feedbacks.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),5000)};
 const stored=readSave();if(Array.isArray(stored.strokes)){try{S.strokes=decodeChallenge(btoa(unescape(encodeURIComponent(JSON.stringify({v:1,n:'存档',t:15,s:0,d:stored.strokes})))),true).d}catch{S.strokes=[]}}
 if(Number.isFinite(stored.aspect)&&stored.aspect>=.01&&stored.aspect<=100)S.aspect=stored.aspect;
 S.pet=ADOPTION_CATALOG.find(p=>p.id===stored.petId)||null;
 if(typeof stored.name==='string')$('name').value=stored.name.slice(0,18);S.best=Number.isFinite(stored.best)&&stored.best>0?stored.best:null;if(S.best)$('best').textContent=`本机最佳 ${S.best.toFixed(2)} 秒 · 再快一点，就一点。`;
 if(location.hash.startsWith('#race=')){try{S.challenge=decodeChallenge(location.hash.slice(6));S.strokes=[];S.aspect=null;S.pet=null;$('name').value='接战选手';$('challenge-banner').hidden=false;$('challenge-copy').textContent=`朋友的「${S.challenge.n}」跑了 ${S.challenge.t.toFixed(2)} 秒。画一匹马，打败它的成绩影子！`;$('free').disabled=$('daily').disabled=true;$('mode-desc').textContent='好友挑战 · 同一赛道种子 · 配速影子';$('accept-challenge').onclick=()=>$('drawing').scrollIntoView({behavior:'smooth',block:'center'})}catch{toast('这个挑战链接不完整，先自由赛一场吧。')}}
+if(location.hash==='#feedbacks'){screen('feedbacks');renderFeedbacks()}
 new ResizeObserver(()=>{if(S.screen==='draw')draw()}).observe($('drawing').parentElement);draw();
