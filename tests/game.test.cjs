@@ -41,3 +41,4 @@ test('challenge carries drawing aspect and rejects invalid ratios',()=>{
     assert.throws(()=>run(`decodeChallenge(${JSON.stringify(raw)})`));
   }
 });
+test('challenge decoder accepts the unpadded URL-safe share format',()=>{run('S.horses[3]={name:"无填充挑战",finish:1,time:14.1234,strokes:template(1),aspect:2}');const encoded=run('encodeChallenge()');assert.equal(encoded.includes('='),false);assert.equal(run('decodeChallenge(encodeChallenge()).n'),'无填充挑战')});
