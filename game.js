@@ -258,7 +258,7 @@ async function shareResult(url,text){
   return false;
 }
 $('share').onclick=async()=>{
-  const url=new URL(location.href);url.hash='race='+encodeChallenge();
+  const url=new URL(location.origin+location.pathname);url.hash='race='+encodeChallenge();
   const text=resultShareText(url.href);$('share-copy').value=text;$('share-url').value=url.href;
   if(await shareResult(url.href,text))return;
   $('share-note').textContent=['localhost','127.0.0.1',''].includes(location.hostname)?'当前为本地试玩地址。部署到公开网址后，朋友才能在自己的设备打开链接。':'可复制文案，也可以复制链接单独发给朋友。';$('share-dialog').showModal();
