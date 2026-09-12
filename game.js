@@ -142,7 +142,7 @@ function drawSocialFrame(c,ctx,t){
   ctx.font='11px sans-serif';ctx.fillText('Inspired by X @yungcontent',w/2,h-25);
 }
 function preferredVideoMime(){
-  if(!window.MediaRecorder)return '';
+  if(!window.MediaRecorder||typeof MediaRecorder.isTypeSupported!=='function')return '';
   return ['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4'].find(type=>MediaRecorder.isTypeSupported(type))||'';
 }
 async function createGif(){
