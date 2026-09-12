@@ -68,7 +68,7 @@ const DAILY_VARIANTS=[
 ];
 function dailyChallenge(key=dateKey()){return DAILY_VARIANTS[hash(key)%DAILY_VARIANTS.length]}
 function targetWindow(){const v=S.dailyVariant;return {start:v?.targetStart??.72,end:v?.targetEnd??.96}}
-function syncTarget(){const target=targetWindow(),el=$('target');el.style.left=`${target.start*100}%`;el.style.width=`${(target.end-target.start)*100}%`}
+function syncTarget(){const target=targetWindow(),el=document.querySelector('.target');if(!el)return;el.style.left=`${target.start*100}%`;el.style.width=`${(target.end-target.start)*100}%`}
 function mode(m){S.mode=m;S.dailyVariant=m==='daily'?dailyChallenge():null;$('free').classList.toggle('selected',m==='free');$('daily').classList.toggle('selected',m==='daily');$('mode-desc').innerText=m==='daily'?`${dateKey()} · ${S.dailyVariant.label}\n${S.dailyVariant.rule}`:'100 米离谱短跑 · 约 20 秒\n踩准节奏，就能反超。';syncTarget()}
 $('free').onclick=()=>mode('free');$('daily').onclick=()=>mode('daily');
 function screen(n){cancelAnimationFrame(S.raf);S.screen=n;music.setScene(n);for(const k of ['draw','race','result','feedbacks'])$(k+'-screen').hidden=k!==n;window.scrollTo(0,0);if(n==='draw')draw()}
@@ -106,7 +106,7 @@ function poster(){
   c.font='bold 23px sans-serif';c.fillText(S.receipt.badge,360,48);
   c.font='16px monospace';c.fillText('NO. '+S.receipt.serial,360,78);
   const shareUrl=new URL(location.href);shareUrl.hash='race='+encodeChallenge(60,true);
-  if(drawQr(c,shareUrl.href,505,66,190)){c.font='bold 12px sans-serif';c.fillText('扫码接战',600,272)}
+  if(drawQr(c,shareUrl.href,480,50,220)){c.font='bold 12px sans-serif';c.fillText('扫码接战',590,286)}
   c.font='900 112px Arial';c.fillText('#'+S.place,360,190);
   if(S.challenge){
     c.font='bold 16px sans-serif';c.fillText('好友挑战 · 同一条赛道',360,315);
