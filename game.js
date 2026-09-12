@@ -81,7 +81,7 @@ function normalizeAiResult(value,source='ai'){
 function localAi(strokes=S.strokes){
   const points=strokes.flatMap(s=>s.p),minX=Math.min(...points.map(p=>p[0]),0),maxX=Math.max(...points.map(p=>p[0]),1),minY=Math.min(...points.map(p=>p[1]),0),maxY=Math.max(...points.map(p=>p[1]),1),ratio=((maxX-minX)*(S.aspect||1))/Math.max(.01,maxY-minY),colors=new Set(strokes.map(s=>s.c)).size;
   const catalog=ratio>2.8?[['疑似折叠晾衣架','四肢各有想法，但下班方向一致。','我的晾衣架跑完了，你画的那玩意敢来吗？'],['疑似逃跑的长面条','身体先出发，灵魂还在起点。','我的面条跑完了，你的能别打结吗？']]:ratio<.72?[['疑似通风报信的路牌','站得很直，跑得很有意见。','我的路牌都跑完了，你画的敢来吗？'],['疑似加班后的图钉','个子不大，拒绝原地待命。','我的图钉跑完了，你的还在桌上吗？']]:colors>=3?[['疑似彩色章鱼马','颜色很多，腿的意见也很多。','我的彩色怪物跑完了，你的敢接吗？'],['疑似打翻的调色盘','每一笔都想当主角，最后竟然完赛。','我的调色盘跑完了，你来收拾吗？']]:[['疑似会跑的办公桌','四条腿都在上班，方向却非常自由。','我的办公桌跑完了，你画的敢来吗？'],['疑似周一的精神状态','看起来没醒，但已经冲过终点。','我的周一跑完了，你的今天敢接吗？']];
-  return normalizeAiResult(catalog[hash(JSON.stringify(strokes))%catalog.length],'fallback');
+  const item=catalog[hash(JSON.stringify(strokes))%catalog.length];return normalizeAiResult({species:item[0],verdict:item[1],challenge:item[2]},'fallback');
 }
 function aiCacheKey(){return AI_CACHE_PREFIX+hash(JSON.stringify({strokes:S.strokes,aspect:S.aspect}))}
 function readAiCache(){try{return normalizeAiResult(JSON.parse(localStorage.getItem(aiCacheKey())),'ai')}catch{return null}}
