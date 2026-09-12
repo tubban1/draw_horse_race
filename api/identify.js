@@ -70,7 +70,8 @@ async function callCloudflare(image,meta,signal){
   const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
   if(!account||!token)throw Object.assign(Error('not-configured'),{code:'AI_NOT_CONFIGURED'});
   const model=process.env.AI_MODEL||MODEL_DEFAULT;
-  const endpoint=`https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(account)}/ai/run/${model}`;
+  const modelPath=String(model).split('/').map(encodeURIComponent).join('/');
+  const endpoint=`https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(account)}/ai/run/${modelPath}`;
   const response=await fetch(endpoint,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({image:[...image.bytes],prompt:promptFor(meta),max_tokens:160}),signal});
   if(!response.ok)throw Error(`provider-${response.status}`);
   return parseResult(await response.json());
