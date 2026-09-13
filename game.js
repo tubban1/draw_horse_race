@@ -58,19 +58,21 @@ function hash(t){let n=2166136261;for(const c of t)n=Math.imul(n^c.charCodeAt(0)
 function random(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 function dateKey(){return new Date().toISOString().slice(0,10)}
 const DAILY_VARIANTS=[
-  {id:'double',label:'连击翻倍日',rule:'连中越多，马越不讲理。',targetStart:.7,targetEnd:.96,comboBoost:.42},
-  {id:'rush',label:'全员早退日',rule:'对手集体赶下班，别让它们先溜。',opponentSpeed:1.05},
-  {id:'mud',label:'泥地摆烂日',rule:'所有马都慢一点，节奏才是王。',speedFactor:.84,targetStart:.66,targetEnd:.98},
-  {id:'needle',label:'针尖节拍日',rule:'绿区变窄，命中一次就上热搜。',targetStart:.83,targetEnd:.94,comboBoost:.35},
-  {id:'wind',label:'妖风抽签日',rule:'对手忽快忽慢，别信表面排名。',wind:1.15},
-  {id:'rocket',label:'火箭发射日',rule:'每次命中都带二段推力。',playerSpeed:-.3,baseBoost:3.4,maxBoost:6.2,comboBoost:.5},
-  {id:'rainbow',label:'彩虹赛道日',rule:'颜色越多，起步越快。',colorBoost:.32}
+  {id:'double',label:'连击翻倍日',rule:'连中越多，马越不讲理。',prompt:'画一匹连中八次也不刹车的马',promptNote:'今天的绿区很宽，适合把朋友甩在身后。',targetStart:.7,targetEnd:.96,comboBoost:.42},
+  {id:'rush',label:'全员早退日',rule:'对手集体赶下班，别让它们先溜。',prompt:'画一匹已经打卡但还没下班的马',promptNote:'它不是在冲刺，它是在逃离工位。',opponentSpeed:1.05},
+  {id:'mud',label:'泥地摆烂日',rule:'所有马都慢一点，节奏才是王。',prompt:'画一匹走两步就想躺下的马',promptNote:'今天不比腿长，只比谁更会摆烂。',speedFactor:.84,targetStart:.66,targetEnd:.98},
+  {id:'needle',label:'针尖节拍日',rule:'绿区变窄，命中一次就上热搜。',prompt:'画一匹踩着针尖跳舞的马',promptNote:'绿区窄得像老板的耐心，踩准才有戏。',targetStart:.83,targetEnd:.94,comboBoost:.35},
+  {id:'wind',label:'妖风抽签日',rule:'对手忽快忽慢，别信表面排名。',prompt:'画一匹被妖风吹着跑的马',promptNote:'方向不重要，能到终点就是风的错。',wind:1.15},
+  {id:'rocket',label:'火箭发射日',rule:'每次命中都带二段推力。',prompt:'画一匹发射前还在系鞋带的马',promptNote:'倒计时已经开始，姿势可以先别管。',playerSpeed:-.3,baseBoost:3.4,maxBoost:6.2,comboBoost:.5},
+  {id:'rainbow',label:'彩虹赛道日',rule:'颜色越多，起步越快。',prompt:'画一匹把调色盘当午餐的马',promptNote:'多涂一种颜色，起步就多一口马力。',colorBoost:.32}
 ];
 function dailyChallenge(key=dateKey()){return DAILY_VARIANTS[hash(key)%DAILY_VARIANTS.length]}
 function targetWindow(){const v=S.dailyVariant;return {start:v?.targetStart??.72,end:v?.targetEnd??.96}}
 function syncTarget(){const target=targetWindow(),el=document.querySelector('.target');if(!el)return;el.style.left=`${target.start*100}%`;el.style.width=`${(target.end-target.start)*100}%`}
-function mode(m){S.mode=m;S.dailyVariant=m==='daily'?dailyChallenge():null;$('free').classList.toggle('selected',m==='free');$('daily').classList.toggle('selected',m==='daily');$('mode-desc').innerText=m==='daily'?`${dateKey()} · ${S.dailyVariant.label}\n${S.dailyVariant.rule}`:'100 米离谱短跑 · 约 20 秒\n踩准节奏，就能反超。';syncTarget()}
+function updateDailyTease(v=dailyChallenge()){const prompt=v?.prompt||'画一匹周一不想上班的马',note=v?.promptNote||'不想上班的理由有很多，马的办法一定很离谱。';if($('daily-prompt'))$('daily-prompt').textContent=prompt;if($('daily-prompt-note'))$('daily-prompt-note').textContent=note;if($('paper-prompt'))$('paper-prompt').textContent=v?.label?`今日：${v.label} →`:'今天的怪题目 →'}
+function mode(m){S.mode=m;S.dailyVariant=m==='daily'?dailyChallenge():null;updateDailyTease(S.dailyVariant||dailyChallenge());$('free').classList.toggle('selected',m==='free');$('daily').classList.toggle('selected',m==='daily');$('mode-desc').innerText=m==='daily'?`${dateKey()} · ${S.dailyVariant.label}\n${S.dailyVariant.rule}`:'100 米离谱短跑 · 约 20 秒\n踩准节奏，就能反超。';syncTarget()}
 $('free').onclick=()=>mode('free');$('daily').onclick=()=>mode('daily');
+$('daily-jump').onclick=()=>{mode('daily');$('drawing').scrollIntoView({behavior:'smooth',block:'center'});toast('今日怪题目已上纸，画得越离谱越好。')};
 const AI_CACHE_PREFIX='derby-ai-v1:';
 function normalizeAiResult(value,source='ai'){
   if(!value||typeof value!=='object')return null;
@@ -312,4 +314,5 @@ if(location.hash.startsWith('#race=')){
   }catch{toast('这个挑战链接不完整，先自由赛一场吧。')}
 }
 if(location.hash==='#feedbacks'){screen('feedbacks');renderFeedbacks()}
+updateDailyTease(S.dailyVariant||dailyChallenge());
 new ResizeObserver(()=>{if(S.screen==='draw')draw()}).observe($('drawing').parentElement);draw();
