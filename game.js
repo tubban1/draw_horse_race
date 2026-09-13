@@ -100,7 +100,7 @@ async function requestAiIdentification(){
   const requestId=++S.aiRequestId,fallback=localAi();S.ai={...fallback,pending:true};renderAiResult();
   const cached=readAiCache();if(cached){if(requestId!==S.aiRequestId)return;S.ai={...cached,pending:false};renderAiResult();return}
   try{
-    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),7000);
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),25000);
     const response=await fetch('/api/identify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:aiDrawingData(),meta:{strokes:S.strokes.length,colors:new Set(S.strokes.map(s=>s.c)).size,aspect:S.aspect||1}}),signal:controller.signal});
     clearTimeout(timer);if(!response.ok)throw Error('ai-unavailable');const value=normalizeAiResult(await response.json());if(!value)throw Error('ai-invalid');
     if(requestId!==S.aiRequestId)return;S.ai={...value,pending:false};writeAiCache(value);

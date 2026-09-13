@@ -89,15 +89,17 @@ async function handler(req,res){
   if(req.method==='OPTIONS'){res.statusCode=204;return res.end()}
   if(req.method!=='POST')return json(res,405,{error:'method-not-allowed'});
   if(!allowed(clientIp(req)))return json(res,429,{error:'rate-limit'});
-  let body;
+  let body,timer;
   try{body=await readBody(req);const image=decodeImage(body.image);const protocol=String(process.env.AI_PROTOCOL||'').toLowerCase();
     if(process.env.AI_ENABLED!=='1')return json(res,503,{error:'ai-disabled',code:'AI_NOT_CONFIGURED'});
-    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),Number(process.env.AI_TIMEOUT_MS)||6500);
+    const controller=new AbortController(),timeoutMs=Math.max(1000,Number(process.env.AI_TIMEOUT_MS)||20000);
+    timer=setTimeout(()=>controller.abort(),timeoutMs);
     const result=protocol==='cloudflare'||(!process.env.AI_BASE_URL&&process.env.CLOUDFLARE_ACCOUNT_ID)?await callCloudflare(image,body.meta,controller.signal):await callOpenAI(image,body.meta,controller.signal);
     clearTimeout(timer);
     if(!result)return json(res,502,{error:'invalid-ai-response',code:'AI_BAD_RESPONSE'});
     return json(res,200,{...result,source:'ai'});
   }catch(error){
+    if(timer)clearTimeout(timer);
     if(['image','image-format','image-size'].includes(error?.message))return json(res,400,{error:'invalid-image',code:'INVALID_IMAGE'});
     if(error?.code==='AI_NOT_CONFIGURED')return json(res,503,{error:'ai-not-configured',code:'AI_NOT_CONFIGURED'});
     if(error?.name==='AbortError')return json(res,504,{error:'ai-timeout',code:'AI_TIMEOUT'});
