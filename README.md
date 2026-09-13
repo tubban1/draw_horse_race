@@ -96,7 +96,7 @@ gif.js              GIF 编码回退
 api/identify.js     Vercel AI 物种鉴定接口
 api/feedback.js     Supabase 集中反馈接口
 supabase/           Supabase 表结构
-tests/               28 项 Node 测试
+tests/               30 项 Node 测试
 docs/homepage.jpg   真实线上首页截图
 ```
 

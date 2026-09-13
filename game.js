@@ -1,6 +1,6 @@
 'use strict';
 const $=id=>document.getElementById(id), palette=['#20231c','#ef6548','#546bdd','#b951b3'];
-const S={screen:'draw',pet:null,aspect:null,strokes:[],color:palette[0],drawing:null,mode:'free',sound:true,elapsed:0,horses:[],combo:0,maxCombo:0,lastBeat:-1,boost:0,phase:'idle',seed:1,raf:0,last:0,challenge:null,dailyVariant:null,ai:null,aiRequestId:0};
+const S={screen:'draw',pet:null,aspect:null,strokes:[],color:palette[0],drawing:null,mode:'free',sound:true,elapsed:0,horses:[],combo:0,maxCombo:0,lastBeat:-1,boost:0,phase:'idle',seed:1,raf:0,last:0,challenge:null,dailyVariant:null,ai:null,aiRequestId:0,replayFrames:[],replayHorses:[],replayLast:null};
 let toastTimer;
 const music = window.derbyAudio;
 document.addEventListener('pointerdown',()=>music.unlock(),{once:true});
@@ -108,16 +108,23 @@ async function requestAiIdentification(){
   renderAiResult();if(S.screen==='result')poster();
 }
 function screen(n){cancelAnimationFrame(S.raf);S.screen=n;music.setScene(n);for(const k of ['draw','race','result','feedbacks'])$(k+'-screen').hidden=k!==n;window.scrollTo(0,0);if(n==='draw')draw()}
-function start(){if(!S.strokes.length)return;music.unlock();save();S.dailyVariant=S.challenge?.m?DAILY_VARIANTS.find(v=>v.id===S.challenge.m)||null:S.mode==='daily'?dailyChallenge():null;syncTarget();S.seed=S.challenge?.s??(S.mode==='daily'?hash(dateKey()):Math.floor(Math.random()*4294967296));const rng=random(S.seed);S.horses=Array.from({length:3},(_,i)=>({name:['不是驴','马力全无','长话短说'][i],strokes:template(i,palette[i+1]),x:0,time:0,speed:5.4+rng()*.8,offset:rng()*6}));if(S.challenge)S.horses[0]={name:S.challenge.n+' · 影子',strokes:S.challenge.d,aspect:S.challenge.a||1,x:0,time:0,ghost:S.challenge.t};S.horses.push({name:$('name').value.trim()||'无名之马',strokes:structuredClone(S.strokes),aspect:S.aspect,petId:S.pet?.id,colors:new Set(S.strokes.map(s=>s.c)).size,x:0,time:0,player:true});S.elapsed=-3;S.combo=0;S.maxCombo=0;S.lastBeat=-1;S.boost=0;S.phase='countdown';S.last=0;S.countNumber=0;$('race-name').textContent=S.horses[3].name;$('race-mode').textContent=S.challenge?`好友挑战 · 对手是成绩配速影子${S.dailyVariant?` · ${S.dailyVariant.label}`:''}`:S.mode==='daily'?`每日挑战 · ${S.dailyVariant.label}`:'自由赛 / THE QUESTIONABLE DERBY';$('boost').disabled=true;$('feedback').textContent=S.dailyVariant?`今日规则：${S.dailyVariant.rule}`:'光标进入绿色区时点击 / 按空格。连点不会更快。';$('race-comment').textContent=S.dailyVariant?`今日挑战：${S.dailyVariant.label}`:'选手正在热身，物种有待确认。';requestAiIdentification();screen('race');S.raf=requestAnimationFrame(loop)}
+function start(){if(!S.strokes.length)return;music.unlock();save();S.dailyVariant=S.challenge?.m?DAILY_VARIANTS.find(v=>v.id===S.challenge.m)||null:S.mode==='daily'?dailyChallenge():null;syncTarget();S.seed=S.challenge?.s??(S.mode==='daily'?hash(dateKey()):Math.floor(Math.random()*4294967296));const rng=random(S.seed);S.horses=Array.from({length:3},(_,i)=>({name:['不是驴','马力全无','长话短说'][i],strokes:template(i,palette[i+1]),x:0,time:0,speed:5.4+rng()*.8,offset:rng()*6}));if(S.challenge)S.horses[0]={name:S.challenge.n+' · 影子',strokes:S.challenge.d,aspect:S.challenge.a||1,x:0,time:0,ghost:S.challenge.t};S.horses.push({name:$('name').value.trim()||'无名之马',strokes:structuredClone(S.strokes),aspect:S.aspect,petId:S.pet?.id,colors:new Set(S.strokes.map(s=>s.c)).size,x:0,time:0,player:true});S.elapsed=-3;S.combo=0;S.maxCombo=0;S.lastBeat=-1;S.boost=0;S.phase='countdown';S.last=0;S.countNumber=0;S.replayFrames=[{t:-3,x:S.horses.map(h=>h.x),time:S.horses.map(h=>h.time||0)}];S.replayHorses=[];S.replayLast=-3;$('race-name').textContent=S.horses[3].name;$('race-mode').textContent=S.challenge?`好友挑战 · 对手是成绩配速影子${S.dailyVariant?` · ${S.dailyVariant.label}`:''}`:S.mode==='daily'?`每日挑战 · ${S.dailyVariant.label}`:'自由赛 / THE QUESTIONABLE DERBY';$('boost').disabled=true;$('feedback').textContent=S.dailyVariant?`今日规则：${S.dailyVariant.rule}`:'光标进入绿色区时点击 / 按空格。连点不会更快。';$('race-comment').textContent=S.dailyVariant?`今日挑战：${S.dailyVariant.label}`:'选手正在热身，物种有待确认。';requestAiIdentification();screen('race');S.raf=requestAnimationFrame(loop)}
 $('start').onclick=start;$('again').onclick=start;$('back').onclick=()=>{S.phase='idle';screen('draw')};$('redraw').onclick=()=>screen('draw');
 function cheer(){if(S.screen!=='race'||S.phase!=='running')return;const beat=Math.floor(S.elapsed/.8);if(S.lastBeat===beat)return;S.lastBeat=beat;const p=(S.elapsed%.8)/.8,target=targetWindow(),hit=p>=target.start&&p<=target.end;S.combo=hit?S.combo+1:0;S.maxCombo=Math.max(S.maxCombo,S.combo);const v=S.dailyVariant,base=v?.baseBoost??2.7,bonus=v?.comboBoost??.22,cap=v?.maxBoost??4.6;S.boost=hit?Math.min(cap,base+S.combo*bonus):.4;$('feedback').textContent=hit?`漂亮！连击 × ${S.combo} · ${S.combo>=3?'马力全开！':'继续保持节奏'}`:'早了或晚了，再找找节奏。';tone(hit?660+Math.min(S.combo,6)*60:180)}
 $('boost').onclick=cheer;window.addEventListener('keydown',e=>{if(e.code==='Space'&&S.screen==='race'&&!e.repeat&&e.target.tagName!=='BUTTON'){e.preventDefault();cheer()}});
+
+function recordReplayFrame(force=false){
+  if(!S.horses.length)return;
+  if(!force&&Number.isFinite(S.replayLast)&&S.elapsed-S.replayLast<.05)return;
+  S.replayLast=S.elapsed;
+  S.replayFrames.push({t:S.elapsed,x:S.horses.map(h=>h.x),time:S.horses.map(h=>h.time||0)});
+}
 $('sound').onclick=()=>{S.sound=!S.sound;$('sound').textContent=S.sound?'音乐 开 ♪':'音乐 关 ◌';$('sound').setAttribute('aria-pressed',S.sound);music.setEnabled(S.sound)};
-function loop(now){if(S.screen!=='race')return;const dt=S.last?Math.min((now-S.last)/1000,.05):0;S.last=now;if(!document.hidden){S.elapsed+=dt;if(S.elapsed<0){const c=Math.ceil(-S.elapsed);$('countdown').textContent=c;if(c!==S.countNumber){S.countNumber=c;tone(450)}}else{if(S.phase==='countdown')music.effect('go');S.phase='running';music.sync(S.elapsed,S.combo);$('boost').disabled=false;$('countdown').textContent=S.elapsed<.6?'跑！':'';const step=Math.min(dt,S.elapsed);S.boost=Math.max(0,S.boost-step*1.4);for(const h of S.horses){if(h.time)continue;const old=h.x;const v=S.dailyVariant,wind=v?.wind?Math.sin(S.elapsed*.9+h.offset)*v.wind:0,colorBoost=h.player?(v?.colorBoost||0)*Math.max(0,h.colors||0):0;const speed=h.ghost?100/h.ghost:(h.player?5.2+S.boost+(v?.playerSpeed||0)+colorBoost:(h.speed+(v?.opponentSpeed||0)+wind)*(v?.speedFactor||1));h.x=Math.min(100,old+speed*step);if(h.x>=100)h.time=S.elapsed-step+(100-old)/speed}const p=S.horses[3];$('distance').textContent=`${Math.floor(p.x)} / 100 m`;$('timer').textContent=`${(p.time||S.elapsed).toFixed(2)}s`;$('combo').textContent=`连击 × ${S.combo}`;$('needle').style.left=((S.elapsed%.8)/.8*98)+'%';if(p.x>75)$('race-comment').textContent='最后 25 米！抽象也是一种实力。';if(p.time){finish();return}}}renderTrack();S.raf=requestAnimationFrame(loop)}
+function loop(now){if(S.screen!=='race')return;const dt=S.last?Math.min((now-S.last)/1000,.05):0;S.last=now;if(!document.hidden){S.elapsed+=dt;if(S.elapsed<0){const c=Math.ceil(-S.elapsed);$('countdown').textContent=c;if(c!==S.countNumber){S.countNumber=c;tone(450)}}else{if(S.phase==='countdown')music.effect('go');S.phase='running';music.sync(S.elapsed,S.combo);$('boost').disabled=false;$('countdown').textContent=S.elapsed<.6?'跑！':'';const step=Math.min(dt,S.elapsed);S.boost=Math.max(0,S.boost-step*1.4);for(const h of S.horses){if(h.time)continue;const old=h.x;const v=S.dailyVariant,wind=v?.wind?Math.sin(S.elapsed*.9+h.offset)*v.wind:0,colorBoost=h.player?(v?.colorBoost||0)*Math.max(0,h.colors||0):0;const speed=h.ghost?100/h.ghost:(h.player?5.2+S.boost+(v?.playerSpeed||0)+colorBoost:(h.speed+(v?.opponentSpeed||0)+wind)*(v?.speedFactor||1));h.x=Math.min(100,old+speed*step);if(h.x>=100)h.time=S.elapsed-step+(100-old)/speed}const p=S.horses[3];$('distance').textContent=`${Math.floor(p.x)} / 100 m`;$('timer').textContent=`${(p.time||S.elapsed).toFixed(2)}s`;$('combo').textContent=`连击 × ${S.combo}`;$('needle').style.left=((S.elapsed%.8)/.8*98)+'%';if(p.x>75)$('race-comment').textContent='最后 25 米！抽象也是一种实力。';if(p.time){finish();return}}}if(typeof recordReplayFrame==='function')recordReplayFrame();renderTrack();S.raf=requestAnimationFrame(loop)}
 document.addEventListener('visibilitychange',()=>{S.last=0;music.pause(document.hidden)});
 function horse(ctx,strokes,x,y,size,phase,still=false,aspect=1){let minX=1,maxX=0,minY=1,maxY=0;for(const s of strokes)for(const [px,py] of s.p){minX=Math.min(minX,px);maxX=Math.max(maxX,px);minY=Math.min(minY,py);maxY=Math.max(maxY,py)}const w=Math.max(.06,(maxX-minX)*aspect),h=Math.max(.06,maxY-minY),scale=size/Math.max(w,h*1.5);ctx.save();ctx.translate(x,y);ctx.fillStyle='#28382018';ctx.beginPath();ctx.ellipse(0,20,size*.48,6,0,0,Math.PI*2);ctx.fill();ctx.translate(0,still?0:Math.sin(phase)*3);ctx.rotate(still?0:Math.sin(phase*.5)*.025);ctx.lineCap='round';ctx.lineJoin='round';for(const s of strokes){ctx.strokeStyle=s.c;ctx.lineWidth=2.5;ctx.beginPath();s.p.forEach(([px,py],i)=>{let xx=(px-(minX+maxX)/2)*aspect*scale,yy=(py-maxY)*scale+10;const leg=clamp((py-minY)/h-.55,0,.45)/.45;if(!still){xx+=Math.sin(phase+px*14)*leg*9;yy-=Math.max(0,Math.cos(phase+px*14))*leg*7}if(i)ctx.lineTo(xx,yy);else ctx.moveTo(xx,yy)});if(s.p.length===1){ctx.lineTo((s.p[0][0]-(minX+maxX)/2)*aspect*scale+.5,(s.p[0][1]-maxY)*scale+10)}ctx.stroke()}ctx.restore()}
 function renderTrack(){const v=fit($('track'));if(!v)return;const {ctx:c,w,h}=v;const player=S.horses[3],cam=Math.max(0,player.x-16),unit=w<600?9:13;const left=w<600?65:140;const top=125,lane=(h-top-25)/4,daily=S.dailyVariant;c.fillStyle=daily?.id==='mud'?'#ddd6ba':daily?.id==='wind'?'#dce7be':'#e8edcc';c.fillRect(0,0,w,h);c.fillStyle='#d3dfa0';for(let i=0;i<9;i++){const x=((i*190-cam*unit*.3)%(w+190)+w+190)%(w+190)-50;c.beginPath();c.ellipse(x,105,100,30,0,0,Math.PI*2);c.fill()}if(daily?.id==='wind'){c.strokeStyle='#b5c995';c.lineWidth=2;c.setLineDash([12,12]);for(let i=0;i<6;i++){c.beginPath();c.moveTo(i*170-(cam*unit*.5%170),top-20);c.lineTo(i*170+80-(cam*unit*.5%170),top-55);c.stroke()}c.setLineDash([])}c.fillStyle='#f5f4df';c.fillRect(0,top-28,w,h);for(let i=0;i<5;i++){const yy=top-15+i*lane;c.strokeStyle='#d8dcc3';c.beginPath();c.moveTo(0,yy);c.lineTo(w,yy);c.stroke()}for(let m=0;m<=100;m+=10){const xx=left+(m-cam)*unit;if(xx<-40||xx>w+40)continue;c.strokeStyle='#c5cbb0';c.setLineDash([4,8]);c.beginPath();c.moveTo(xx,top-25);c.lineTo(xx,h);c.stroke();c.setLineDash([]);c.fillStyle='#8b9474';c.font='10px Arial';c.fillText(m+'m',xx+5,h-8)}const fx=left+(100-cam)*unit;if(fx<w+20){for(let i=0;i<24;i++)for(let j=0;j<2;j++){c.fillStyle=(i+j)%2?'#f9faee':'#20231c';c.fillRect(fx+j*8,top-25+i*12,8,12)}}S.horses.forEach((a,i)=>{const raw=left+(a.x-cam)*unit,x=clamp(raw,28,w-30),y=top+i*lane+lane*.6;horse(c,a.strokes,x,y,w<600?78:125,Math.max(0,S.elapsed)*12+i,false,a.aspect||1);c.font=(a.player?'bold ':'')+'10px Arial';c.textAlign='center';c.fillStyle=a.player?'#20231c':'#737b61';c.fillText((raw<28?'← ':raw>w-30?'→ ':'')+(a.player?'你的马':a.name),x,y-45)});const sorted=[...S.horses].sort((a,b)=>b.x-a.x||(a.time||Infinity)-(b.time||Infinity));$('ranks').replaceChildren(...sorted.map((a,i)=>{const e=document.createElement('span');e.textContent=`${i+1}  ${a.player?'你 · ':''}${a.name}`;if(a.player)e.className='you';return e}))}
-function finish(){S.phase='finished';$('boost').disabled=true;const p=S.horses[3];S.place=1+S.horses.filter(h=>!h.player&&h.time&&h.time<p.time).length;const old=S.best;S.best=Math.min(old||Infinity,p.time);save();$('best').textContent=`本机最佳 ${S.best.toFixed(2)} 秒 · 再快一点，就一点。`;S.receipt=raceReceipt({horse:p,place:S.place,combo:S.maxCombo,seed:S.seed,challengeTime:S.challenge?.t,previousBest:old});
+function finish(){S.phase='finished';$('boost').disabled=true;recordReplayFrame(true);S.replayHorses=S.horses.map(h=>({...h,strokes:h.strokes.map(s=>({c:s.c,p:s.p.map(point=>[point[0],point[1]])}))}));const p=S.horses[3];S.place=1+S.horses.filter(h=>!h.player&&h.time&&h.time<p.time).length;const old=S.best;S.best=Math.min(old||Infinity,p.time);save();$('best').textContent=`本机最佳 ${S.best.toFixed(2)} 秒 · 再快一点，就一点。`;S.receipt=raceReceipt({horse:p,place:S.place,combo:S.maxCombo,seed:S.seed,challengeTime:S.challenge?.t,previousBest:old});
 $('result-title').textContent=S.receipt.title;
 $('result-desc').textContent=`${S.receipt.intro}\n${S.receipt.stats}\n${S.receipt.performance}${S.dailyVariant?`\n今日规则：${S.dailyVariant.label} · ${S.dailyVariant.rule}`:''}`;
 $('challenge-result').textContent=`${S.receipt.verdict}${S.dailyVariant?` 今日挑战 · ${S.dailyVariant.label}`:''}`;
@@ -164,55 +171,73 @@ function poster(){
   c.font='15px Arial';c.fillText('DOODLE DERBY  /  发给一个不服的人',W/2,1462);
   const preview=$('poster-image');if(preview){preview.src=c.toDataURL('image/png');preview.hidden=false;$('poster').hidden=true}
 }
-function clipFrame(c,ctx,t){
-  const w=c.width,h=c.height,progress=Math.min(1,t/4.8);
-  ctx.fillStyle='#dfff4f';ctx.fillRect(0,0,w,h);ctx.fillStyle='#fafbf3';ctx.fillRect(24,24,w-48,h-48);
-  ctx.fillStyle='#20231c';ctx.textAlign='center';ctx.font='bold 20px sans-serif';ctx.fillText(S.receipt.badge,w/2,72);
-  ctx.font='900 86px Arial';ctx.fillText('#'+S.place,w/2,180);
-  ctx.font='bold 27px sans-serif';ctx.fillText(S.horses[3].name,w/2,245);
-  ctx.font='900 64px Arial';ctx.fillText(S.horses[3].time.toFixed(2)+'s',w/2,330);
-  ctx.save();ctx.translate(70+progress*(w-140),510);horse(ctx,S.horses[3].strokes,0,0,250,progress*10,false,S.horses[3].aspect||1);ctx.restore();
-  const ai=S.ai&&!S.ai.pending?S.ai:null;
-  ctx.fillStyle='#dfff4f';ctx.fillRect(48,650,w-96,120);ctx.fillStyle='#20231c';ctx.font='bold 24px sans-serif';ctx.fillText(ai?`AI：${ai.species}`:S.receipt.title.replace(/\n/g,' '),w/2,698,w-120);ctx.font='17px sans-serif';ctx.fillText(ai?ai.challenge:S.receipt.taunt,w/2,738,w-120);ctx.font='16px Arial';ctx.fillText('DOODLE DERBY  /  这也算马？',w/2,850);
+function replayDuration(){
+  const first=S.replayFrames[0]?.t??-3,last=S.replayFrames.at(-1)?.t??S.horses[3]?.time??0;
+  return Math.max(.1,last-first);
 }
-function drawSocialFrame(c,ctx,t){
-  const w=c.width,h=c.height,progress=Math.min(1,t/4.8),p=S.horses[3];
-  ctx.fillStyle='#dfff4f';ctx.fillRect(0,0,w,h);ctx.fillStyle='#fafbf3';ctx.fillRect(12,12,w-24,h-24);ctx.fillStyle='#20231c';ctx.textAlign='center';
-  ctx.font='bold 13px sans-serif';ctx.fillText('这也算马？  /  DOODLE DERBY',w/2,38);ctx.font='900 34px Arial';ctx.fillText(p.time.toFixed(2)+'s',w/2,94);
-  ctx.font='bold 16px sans-serif';ctx.fillText(`#${S.place}  ${p.name}`,w/2,122);
-  ctx.save();ctx.translate(42+progress*(w-84),220);horse(ctx,p.strokes,0,0,125,progress*10,false,p.aspect||1);ctx.restore();
-  const ai=S.ai&&!S.ai.pending?S.ai:null;
-  ctx.fillStyle='#dfff4f';ctx.fillRect(24,300,w-48,70);ctx.fillStyle='#20231c';ctx.font='bold 15px sans-serif';ctx.fillText(ai?`AI：${ai.species}`:S.receipt.title.replace(/\n/g,' '),w/2,326,w-56);ctx.font='12px sans-serif';ctx.fillText(ai?ai.challenge:S.receipt.taunt,w/2,350,w-56);
+function replaySample(offset){
+  const frames=S.replayFrames.length?S.replayFrames:[{t:-3,x:S.replayHorses.map(()=>0),time:S.replayHorses.map(()=>0)}];
+  const start=frames[0].t,target=start+clamp(offset,0,replayDuration());
+  let right=frames.findIndex(frame=>frame.t>=target);if(right<0)right=frames.length-1;
+  const left=Math.max(0,right-1),a=frames[left],b=frames[right],span=Math.max(.0001,b.t-a.t),mix=clamp((target-a.t)/span,0,1);
+  return {t:target,x:a.x.map((value,i)=>value+(b.x[i]-value)*mix),time:a.time.map((value,i)=>value+(b.time[i]-value)*mix)};
 }
+function drawReplayScene(canvas,sample){
+  const c=canvas.getContext('2d'),w=canvas.width,h=canvas.height,hs=S.replayHorses,player=sample.x[3]||0,cam=Math.max(0,player-16),unit=w<600?9:13,left=w<600?65:140,top=105,lane=(h-top-18)/4,daily=S.dailyVariant;
+  c.fillStyle=daily?.id==='mud'?'#ddd6ba':daily?.id==='wind'?'#dce7be':'#e8edcc';c.fillRect(0,0,w,h);
+  c.fillStyle='#d3dfa0';for(let i=0;i<9;i++){const x=((i*190-cam*unit*.3)%(w+190)+w+190)%(w+190)-50;c.beginPath();c.ellipse(x,85,100,30,0,0,Math.PI*2);c.fill()}
+  c.fillStyle='#f5f4df';c.fillRect(0,top-28,w,h);
+  for(let i=0;i<5;i++){const yy=top-15+i*lane;c.strokeStyle='#d8dcc3';c.beginPath();c.moveTo(0,yy);c.lineTo(w,yy);c.stroke()}
+  for(let m=0;m<=100;m+=10){const xx=left+(m-cam)*unit;if(xx<-40||xx>w+40)continue;c.strokeStyle='#c5cbb0';c.setLineDash([4,8]);c.beginPath();c.moveTo(xx,top-25);c.lineTo(xx,h);c.stroke();c.setLineDash([]);c.fillStyle='#8b9474';c.font='10px Arial';c.fillText(m+'m',xx+5,h-8)}
+  const fx=left+(100-cam)*unit;if(fx<w+20){for(let i=0;i<24;i++)for(let j=0;j<2;j++){c.fillStyle=(i+j)%2?'#f9faee':'#20231c';c.fillRect(fx+j*8,top-25+i*12,8,12)}}
+  hs.forEach((a,i)=>{const raw=left+((sample.x[i]||0)-cam)*unit,x=clamp(raw,28,w-30),y=top+i*lane+lane*.6;horse(c,a.strokes||[],x,y,w<600?58:95,Math.max(0,sample.t)*12+i,false,a.aspect||1);c.font=(a.player?'bold ':'')+'10px Arial';c.textAlign='center';c.fillStyle=a.player?'#20231c':'#737b61';c.fillText((raw<28?'← ':raw>w-30?'→ ':'')+(a.player?'你的马':a.name),x,y-38)});
+  c.fillStyle='#20231c';c.textAlign='left';c.font='bold 13px Arial';c.fillText('这也算马？  /  完整比赛回放',18,24);c.textAlign='right';c.font='12px Arial';c.fillText(`${Math.max(0,sample.x[3]||0).toFixed(0)} / 100 m`,w-18,24);
+  if(sample.t<0||sample.t<.6){c.fillStyle='#20231ccc';c.textAlign='center';c.font='900 58px Arial';c.fillText(sample.t<0?Math.ceil(-sample.t):'跑！',w/2,h/2)}
+  else if(sample.time[3]&&sample.t>=sample.time[3]){c.fillStyle='#20231ccc';c.textAlign='center';c.font='900 34px Arial';c.fillText('冲线！ '+sample.time[3].toFixed(2)+'s',w/2,48)}
+}
+const replayState={playing:false,offset:0,last:0,raf:0};
+function formatReplayTime(seconds){const total=Math.max(0,Math.floor(seconds)),minutes=Math.floor(total/60),rest=String(total%60).padStart(2,'0');return `${String(minutes).padStart(2,'0')}:${rest}`}
+function renderReplay(){
+  const duration=replayDuration(),sample=replaySample(replayState.offset),canvas=$('replay-track');
+  if(canvas)drawReplayScene(canvas,sample);
+  $('replay-seek').value=String(duration?replayState.offset/duration:0);
+  $('replay-time').textContent=`${formatReplayTime(replayState.offset)} / ${formatReplayTime(duration)}`;
+  $('replay-toggle').textContent=replayState.playing?'❚❚ 暂停':'▶ 继续';
+}
+function replayTick(now){
+  if(!replayState.playing)return;
+  replayState.offset+=Math.min(.1,(now-replayState.last)/1000);replayState.last=now;
+  if(replayState.offset>=replayDuration()){replayState.offset=replayDuration();replayState.playing=false}
+  renderReplay();if(replayState.playing)replayState.raf=requestAnimationFrame(replayTick);
+}
+function replayFormat(){const mime=preferredVideoMime();return mime?(mime.includes('mp4')?'MP4':'WebM'):'GIF'}
+function openReplay(){
+  if(!S.replayFrames.length||!S.replayHorses.length)return toast('这场比赛还没有可用回放。');
+  const format=replayFormat();$('replay-format-note').textContent=`包含完整起跑、比赛过程和冲线结果。下载格式：${format}。`;$('replay-download').textContent=`下载完整比赛${format} ↓`;
+  replayState.offset=0;replayState.playing=true;replayState.last=performance.now();renderReplay();$('replay-dialog').showModal();replayState.raf=requestAnimationFrame(replayTick);
+}
+function closeReplay(){replayState.playing=false;cancelAnimationFrame(replayState.raf);$('replay-dialog').close()}
+$('save-clip').onclick=openReplay;$('replay-close').onclick=closeReplay;$('replay-toggle').onclick=()=>{replayState.playing=!replayState.playing;replayState.last=performance.now();renderReplay();if(replayState.playing)replayState.raf=requestAnimationFrame(replayTick)};
+$('replay-seek').oninput=()=>{replayState.offset=Number($('replay-seek').value)*replayDuration();replayState.last=performance.now();renderReplay()};$('replay-dialog').addEventListener('close',()=>{replayState.playing=false;cancelAnimationFrame(replayState.raf)});
 function preferredVideoMime(){
   if(!window.MediaRecorder||typeof MediaRecorder.isTypeSupported!=='function')return '';
-  return ['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4'].find(type=>MediaRecorder.isTypeSupported(type))||'';
+  return ['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].find(type=>MediaRecorder.isTypeSupported(type))||'';
 }
-async function createGif(){
+async function createReplayGif(){
   if(!window.gifenc)throw Error('gif-unsupported');
-  const canvas=document.createElement('canvas');canvas.width=270;canvas.height=450;const ctx=canvas.getContext('2d'),gif=window.gifenc.GIFEncoder();
-  for(let frame=0;frame<8;frame++){
-    drawSocialFrame(canvas,ctx,frame*.6);const rgba=ctx.getImageData(0,0,canvas.width,canvas.height).data;const palette=window.gifenc.quantize(rgba,64,{format:'rgb444'});const index=window.gifenc.applyPalette(rgba,palette,'rgb444');gif.writeFrame(index,canvas.width,canvas.height,{palette,delay:600,repeat:0});
-  }
-  gif.finish();return new Blob([gif.bytes()],{type:'image/gif'});
+  const canvas=document.createElement('canvas');canvas.width=480;canvas.height=270;const ctx=canvas.getContext('2d'),gif=window.gifenc.GIFEncoder(),duration=replayDuration();
+  for(let t=0;t<duration;t+=.2){drawReplayScene(canvas,replaySample(t));const rgba=ctx.getImageData(0,0,canvas.width,canvas.height).data,palette=window.gifenc.quantize(rgba,64,{format:'rgb444'}),index=window.gifenc.applyPalette(rgba,palette,'rgb444');gif.writeFrame(index,canvas.width,canvas.height,{palette,delay:200,repeat:0})}
+  drawReplayScene(canvas,replaySample(duration));const rgba=ctx.getImageData(0,0,canvas.width,canvas.height).data,palette=window.gifenc.quantize(rgba,64,{format:'rgb444'}),index=window.gifenc.applyPalette(rgba,palette,'rgb444');gif.writeFrame(index,canvas.width,canvas.height,{palette,delay:600,repeat:0});gif.finish();return {blob:new Blob([gif.bytes()],{type:'image/gif'}),extension:'gif',mime:'image/gif'};
 }
-async function createClip(){
-  const mime=preferredVideoMime();
-  if(!mime)return {blob:await createGif(),extension:'gif',mime:'image/gif'};
-  if(!HTMLCanvasElement.prototype.captureStream)throw Error('unsupported');
-  const canvas=document.createElement('canvas');canvas.width=540;canvas.height=900;const ctx=canvas.getContext('2d'),stream=canvas.captureStream(30),recorder=new MediaRecorder(stream,{mimeType:mime}),chunks=[];
+async function createReplayVideo(){
+  const mime=preferredVideoMime();if(!mime||!HTMLCanvasElement.prototype.captureStream)return createReplayGif();
+  const canvas=document.createElement('canvas');canvas.width=960;canvas.height=540;const stream=canvas.captureStream(30),recorder=new MediaRecorder(stream,{mimeType:mime}),chunks=[],duration=replayDuration();
   recorder.ondataavailable=e=>e.data.size&&chunks.push(e.data);
-  const blob=await new Promise((resolve,reject)=>{recorder.onstop=()=>resolve(new Blob(chunks,{type:mime}));recorder.onerror=reject;recorder.start();const started=performance.now();const draw=now=>{const t=(now-started)/1000;clipFrame(canvas,ctx,t);if(t<4.8)requestAnimationFrame(draw);else recorder.stop()};requestAnimationFrame(draw)});
-  return {blob,extension:'mp4',mime};
+  const blob=await new Promise((resolve,reject)=>{recorder.onstop=()=>resolve(new Blob(chunks,{type:mime}));recorder.onerror=reject;recorder.start();const started=performance.now();const draw=now=>{const offset=Math.min(duration,(now-started)/1000);drawReplayScene(canvas,replaySample(offset));if(offset<duration)requestAnimationFrame(draw);else recorder.stop()};requestAnimationFrame(draw)});
+  return {blob,extension:mime.includes('mp4')?'mp4':'webm',mime};
 }
-async function shareOrDownload(blob,filename,mime,title,text){
-  const file=new File([blob],filename,{type:mime});
-  if(navigator.share&&navigator.canShare?.({files:[file]})){try{await navigator.share({title,text,files:[file]});return 'shared'}catch(error){if(error?.name==='AbortError')return 'cancelled'}}
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),5000);return 'downloaded';
-}
-$('save-clip').textContent=preferredVideoMime()?'生成朋友圈视频 MP4 ↗':'生成朋友圈动图 GIF ↗';
-$('save-clip').onclick=async()=>{try{const result=await createClip(),action=await shareOrDownload(result.blob,`这也算马-朋友圈.${result.extension}`,result.mime,`「${S.horses[3].name}」的离谱战绩`,'我画的这玩意儿，跑完了100米。');if(action==='shared')toast(result.extension==='mp4'?'已打开分享面板，可直接发朋友圈。':'已打开分享面板，可直接发给朋友。');else if(action==='downloaded')toast(result.extension==='mp4'?'MP4 已下载，可发到朋友圈。':'GIF 动图已下载，可发给朋友。')}catch{toast('动态分享生成失败，请先保存静态海报。')}};
-
+function downloadBlob(blob,filename){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),5000)}
+$('replay-download').onclick=async()=>{const button=$('replay-download');button.disabled=true;button.textContent='正在生成完整回放…';try{const result=await createReplayVideo();downloadBlob(result.blob,`这也算马-完整回放.${result.extension}`);toast(`完整回放已下载（${result.extension.toUpperCase()}）。`)}catch{toast('回放生成失败，请稍后再试。')}finally{button.disabled=false;button.textContent=`下载完整比赛${replayFormat()} ↓`}};
 // A bounded, versioned URL payload. Shared drawings are downsampled; local originals stay intact.
 function encodeChallenge(pointBudget=200,compact=false){const p=S.horses[3],budget=Math.max(2,Math.floor(pointBudget/p.strokes.length));const d=p.strokes.map(s=>({c:s.c,p:s.p.filter((_,i)=>i===0||i===s.p.length-1||i%Math.max(1,Math.ceil(s.p.length/budget))===0).map(a=>a.map(n=>Math.round(n*1000)/1000))}));const variant=S.dailyVariant?.id||null;const payload=compact?[2,p.name,Math.round(p.time*100),S.seed,Math.round((p.aspect||1)*1000),d.map(s=>[palette.indexOf(s.c),s.p.map(a=>a.map(n=>Math.round(n*1000)))]),variant]:{v:1,n:p.name,t:+p.time.toFixed(4),s:S.seed,a:p.aspect||1,m:variant,d};return btoa(unescape(encodeURIComponent(JSON.stringify(payload)))).replaceAll('+','-').replaceAll('/','_').replaceAll('=','')}
 function decodeChallenge(raw,local=false){
