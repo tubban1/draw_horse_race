@@ -276,9 +276,17 @@ $('save').onclick=savePoster;
 const FEEDBACK_KEY='derby-feedbacks-v1',FEEDBACK_TOPICS={idea:'怪点子',bug:'问题反馈',share:'分享建议',other:'其他'};
 function readFeedbacks(){try{const value=JSON.parse(localStorage.getItem(FEEDBACK_KEY));return Array.isArray(value)?value:[]}catch{return[]}}
 function writeFeedbacks(items){try{localStorage.setItem(FEEDBACK_KEY,JSON.stringify(items));return true}catch{return false}}
-function renderFeedbacks(){
-  const list=$('feedback-list'),items=readFeedbacks();if(!list)return;
-  $('feedback-summary').textContent=items.length?`${items.length} 条反馈 · 最新一条优先`:'暂时还没有反馈。';
+async function renderFeedbacks(){
+  const list=$('feedback-list');if(!list)return;
+  let items=readFeedbacks(),remote=true;
+  try{
+    const response=await fetch('/api/feedback',{cache:'no-store'});
+    if(!response.ok)throw Error('feedback-unavailable');
+    const payload=await response.json();
+    if(!Array.isArray(payload.items))throw Error('feedback-invalid');
+    items=payload.items;writeFeedbacks(items);
+  }catch{remote=false}
+  $('feedback-summary').textContent=items.length?`${items.length} 条反馈 · 最新一条优先${remote?'':' · 当前设备缓存'}`:'暂时还没有反馈。';
   if(!items.length){const empty=document.createElement('p');empty.className='feedback-empty';empty.textContent='等一位选手把想法投进来。';list.replaceChildren(empty);return}
   list.replaceChildren(...items.map(item=>{
     const card=document.createElement('article');card.className='feedback-card';
@@ -292,11 +300,21 @@ function renderFeedbacks(){
 }
 function openFeedback(){const d=$('feedback-dialog');$('feedback-message').value='';if(typeof d.showModal==='function')d.showModal();else toast('当前浏览器暂不支持反馈窗口。')}
 $('feedback-open').onclick=openFeedback;$('feedback-home').onclick=openFeedback;
-$('feedback-submit').onclick=()=>{
+$('feedback-submit').onclick=async()=>{
   const message=$('feedback-message').value.trim();if(message.length<2)return toast('先写两句，马厩才知道怎么改。');
-  const p=S.horses[3],items=readFeedbacks();items.unshift({id:`f-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`,at:new Date().toISOString(),rating:Number($('feedback-rating').value)||5,topic:$('feedback-topic').value,message,horse:p?.name||'',mode:S.challenge?'好友挑战':S.mode==='daily'?`每日挑战 · ${S.dailyVariant?.label||''}`:'自由赛',place:S.place,time:p?.time||null,combo:S.maxCombo||0});
-  if(!writeFeedbacks(items.slice(0,200)))return toast('这次反馈没存下，请稍后再试。');
-  $('feedback-dialog').close();renderFeedbacks();toast('反馈已投进马厩，谢谢你救了这匹马。');
+  const p=S.horses[3],item={id:`f-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`,at:new Date().toISOString(),rating:Number($('feedback-rating').value)||5,topic:$('feedback-topic').value,message,horse:p?.name||'',mode:S.challenge?'好友挑战':S.mode==='daily'?`每日挑战 · ${S.dailyVariant?.label||''}`:'自由赛',place:S.place,time:p?.time||null,combo:S.maxCombo||0};
+  const submit=$('feedback-submit');submit.disabled=true;
+  try{
+    const response=await fetch('/api/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(item)});
+    if(!response.ok)throw Error('feedback-unavailable');
+    const payload=await response.json();
+    if(payload.item)writeFeedbacks([payload.item,...readFeedbacks()].slice(0,500));
+    $('feedback-dialog').close();await renderFeedbacks();toast('反馈已汇总到马厩，谢谢你救了这匹马。');
+  }catch{
+    const items=readFeedbacks();items.unshift(item);
+    if(!writeFeedbacks(items.slice(0,200)))return toast('这次反馈没存下，请稍后再试。');
+    $('feedback-dialog').close();await renderFeedbacks();toast('网络暂时不通，已先存到本机。');
+  }finally{submit.disabled=false}
 };
 $('feedback-export').onclick=()=>{const blob=new Blob([JSON.stringify(readFeedbacks(),null,2)],{type:'application/json'}),u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='doodle-derby-feedbacks.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),5000)};
 const stored=readSave();if(Array.isArray(stored.strokes)){try{S.strokes=decodeChallenge(btoa(unescape(encodeURIComponent(JSON.stringify({v:1,n:'存档',t:15,s:0,d:stored.strokes})))),true).d}catch{S.strokes=[]}}

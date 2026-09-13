@@ -76,6 +76,12 @@ AI_TIMEOUT_MS=20000
 
 也支持 Cloudflare Workers AI。密钥只由 `api/identify.js` 读取，不会进入浏览器；没有配置或调用失败时，游戏继续使用本地梗库。
 
+## 反馈收件箱
+
+游戏结束后可以提交匿名反馈。`/#feedbacks` 会从 Supabase 的 `horse_feedbacks` 表读取所有玩家的反馈，并支持导出 JSON；提交失败时会暂存到当前设备，网络恢复后再次打开收件箱会重新读取集中数据。
+
+首次部署前，在 Supabase SQL 编辑器运行 [`supabase/horse_feedbacks.sql`](supabase/horse_feedbacks.sql)，再把 `SUPABASE_URL` 和 `SUPABASE_SERVICE_ROLE_KEY` 配置到 Vercel 生产环境。服务角色密钥只在 `api/feedback.js` 服务端使用，不会进入浏览器。
+
 ## 项目结构
 
 ```text
@@ -88,7 +94,9 @@ qr.js               本地二维码生成器
 audio.js            Web Audio MIDI 音乐和马蹄音效
 gif.js              GIF 编码回退
 api/identify.js     Vercel AI 物种鉴定接口
-tests/               25 项 Node 测试
+api/feedback.js     Supabase 集中反馈接口
+supabase/           Supabase 表结构
+tests/               28 项 Node 测试
 docs/homepage.jpg   真实线上首页截图
 ```
 
@@ -104,7 +112,7 @@ npx vercel@latest --prod
 
 ## 边界与下一步
 
-这是一个轻量、无账户的浏览器游戏：本机最佳不是全球排行榜，好友挑战不是实时联机，URL 里的成绩也不适合严肃竞赛。反馈收件箱默认保存在提交反馈的设备上，集中收件箱可以接入 KV、数据库或表单服务。
+这是一个轻量、无账户的浏览器游戏：本机最佳不是全球排行榜，好友挑战不是实时联机，URL 里的成绩也不适合严肃竞赛。反馈收件箱使用 Supabase 集中保存，服务端只保留玩家填写的匿名反馈和比赛上下文。
 
 最值得继续验证的指标：首局完成率、再次开赛率、分享点击率、挑战链接打开率和好友接战完成率。
 
