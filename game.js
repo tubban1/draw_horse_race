@@ -91,14 +91,14 @@ function aiDrawingData(){
 }
 function renderAiResult(){
   const box=$('ai-verdict');if(!box)return;box.hidden=false;box.dataset.state=S.ai?.pending?'loading':'ready';box.dataset.source=S.ai?.source||'fallback';
-  $('ai-verdict-status').textContent=S.ai?.pending?'正在观察你的画……':S.ai?.source==='ai'?'AI 已鉴定':'本地备用鉴定';
+  $('ai-verdict-status').textContent=S.ai?.pending?'正在观察你的画……':S.ai?.source==='cache'?'AI 已鉴定 · 本机缓存':S.ai?.source==='ai'?'AI 已鉴定':'本地备用鉴定';
   $('ai-species').textContent=S.ai?.pending?'正在给它起外号':S.ai?.species||'未知物种';
   $('ai-line').textContent=S.ai?.pending?'比赛先跑，鉴定马上回来。':S.ai?.verdict||'';
   $('ai-challenge').textContent=S.ai?.pending?'先想想你朋友会画出什么。':S.ai?.challenge||'';
 }
 async function requestAiIdentification(){
   const requestId=++S.aiRequestId,fallback=localAi();S.ai={...fallback,pending:true};renderAiResult();
-  const cached=readAiCache();if(cached){if(requestId!==S.aiRequestId)return;S.ai={...cached,pending:false};renderAiResult();return}
+  const cached=readAiCache();if(cached){if(requestId!==S.aiRequestId)return;S.ai={...cached,source:'cache',pending:false};renderAiResult();return}
   try{
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),25000);
     const response=await fetch('/api/identify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:aiDrawingData(),meta:{strokes:S.strokes.length,colors:new Set(S.strokes.map(s=>s.c)).size,aspect:S.aspect||1}}),signal:controller.signal});
@@ -162,6 +162,7 @@ function poster(){
   const shareUrl=new URL(location.origin+location.pathname);shareUrl.hash='race='+encodeChallenge(12,true);
   if(drawQr(c,shareUrl.href,850,1230,138)){c.font='bold 14px sans-serif';c.fillText('扫码接战',919,1389)}
   c.font='15px Arial';c.fillText('DOODLE DERBY  /  发给一个不服的人',W/2,1462);
+  const preview=$('poster-image');if(preview){preview.src=c.toDataURL('image/png');preview.hidden=false;$('poster').hidden=true}
 }
 function clipFrame(c,ctx,t){
   const w=c.width,h=c.height,progress=Math.min(1,t/4.8);
