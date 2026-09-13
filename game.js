@@ -197,14 +197,19 @@ function drawReplayScene(canvas,sample){
 }
 const replayState={playing:false,offset:0,last:0,raf:0};
 function formatReplayTime(seconds){const total=Math.max(0,Math.floor(seconds)),minutes=Math.floor(total/60),rest=String(total%60).padStart(2,'0');return `${String(minutes).padStart(2,'0')}:${rest}`}
+function replayButtonLabel(playing,offset,duration){
+  if(playing)return '❚❚ 暂停';
+  return offset>=duration?'↻ 重播':'▶ 继续';
+}
 function renderReplay(){
   const duration=replayDuration(),sample=replaySample(replayState.offset),canvas=$('replay-track');
   if(canvas)drawReplayScene(canvas,sample);
   $('replay-seek').value=String(duration?replayState.offset/duration:0);
   $('replay-time').textContent=`${formatReplayTime(replayState.offset)} / ${formatReplayTime(duration)}`;
-  $('replay-toggle').textContent=replayState.playing?'❚❚ 暂停':'▶ 继续';
+  $('replay-toggle').textContent=replayButtonLabel(replayState.playing,replayState.offset,duration);
 }
 function replayTick(now){
+  replayState.raf=0;
   if(!replayState.playing)return;
   replayState.offset+=Math.min(.1,(now-replayState.last)/1000);replayState.last=now;
   if(replayState.offset>=replayDuration()){replayState.offset=replayDuration();replayState.playing=false}
@@ -217,7 +222,11 @@ function openReplay(){
   replayState.offset=0;replayState.playing=true;replayState.last=performance.now();renderReplay();$('replay-dialog').showModal();replayState.raf=requestAnimationFrame(replayTick);
 }
 function closeReplay(){replayState.playing=false;cancelAnimationFrame(replayState.raf);$('replay-dialog').close()}
-$('save-clip').onclick=openReplay;$('replay-close').onclick=closeReplay;$('replay-toggle').onclick=()=>{replayState.playing=!replayState.playing;replayState.last=performance.now();renderReplay();if(replayState.playing)replayState.raf=requestAnimationFrame(replayTick)};
+$('save-clip').onclick=openReplay;$('replay-close').onclick=closeReplay;$('replay-toggle').onclick=()=>{
+  if(replayState.playing){replayState.playing=false;cancelAnimationFrame(replayState.raf);replayState.raf=0;renderReplay();return}
+  if(replayState.offset>=replayDuration())replayState.offset=0;
+  replayState.playing=true;replayState.last=performance.now();renderReplay();replayState.raf=requestAnimationFrame(replayTick);
+};
 $('replay-seek').oninput=()=>{replayState.offset=Number($('replay-seek').value)*replayDuration();replayState.last=performance.now();renderReplay()};$('replay-dialog').addEventListener('close',()=>{replayState.playing=false;cancelAnimationFrame(replayState.raf)});
 function preferredVideoMime(){
   if(!window.MediaRecorder||typeof MediaRecorder.isTypeSupported!=='function')return '';
@@ -225,13 +234,13 @@ function preferredVideoMime(){
 }
 async function createReplayGif(){
   if(!window.gifenc)throw Error('gif-unsupported');
-  const canvas=document.createElement('canvas');canvas.width=480;canvas.height=270;const ctx=canvas.getContext('2d'),gif=window.gifenc.GIFEncoder(),duration=replayDuration();
-  for(let t=0;t<duration;t+=.2){drawReplayScene(canvas,replaySample(t));const rgba=ctx.getImageData(0,0,canvas.width,canvas.height).data,palette=window.gifenc.quantize(rgba,64,{format:'rgb444'}),index=window.gifenc.applyPalette(rgba,palette,'rgb444');gif.writeFrame(index,canvas.width,canvas.height,{palette,delay:200,repeat:0})}
+  const canvas=document.createElement('canvas');canvas.width=360;canvas.height=203;const ctx=canvas.getContext('2d'),gif=window.gifenc.GIFEncoder(),duration=replayDuration();
+  for(let t=0;t<duration;t+=.25){drawReplayScene(canvas,replaySample(t));const rgba=ctx.getImageData(0,0,canvas.width,canvas.height).data,palette=window.gifenc.quantize(rgba,64,{format:'rgb444'}),index=window.gifenc.applyPalette(rgba,palette,'rgb444');gif.writeFrame(index,canvas.width,canvas.height,{palette,delay:250,repeat:0})}
   drawReplayScene(canvas,replaySample(duration));const rgba=ctx.getImageData(0,0,canvas.width,canvas.height).data,palette=window.gifenc.quantize(rgba,64,{format:'rgb444'}),index=window.gifenc.applyPalette(rgba,palette,'rgb444');gif.writeFrame(index,canvas.width,canvas.height,{palette,delay:600,repeat:0});gif.finish();return {blob:new Blob([gif.bytes()],{type:'image/gif'}),extension:'gif',mime:'image/gif'};
 }
 async function createReplayVideo(){
   const mime=preferredVideoMime();if(!mime||!HTMLCanvasElement.prototype.captureStream)return createReplayGif();
-  const canvas=document.createElement('canvas');canvas.width=960;canvas.height=540;const stream=canvas.captureStream(30),recorder=new MediaRecorder(stream,{mimeType:mime}),chunks=[],duration=replayDuration();
+  const canvas=document.createElement('canvas');canvas.width=720;canvas.height=405;const stream=canvas.captureStream(24),recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:480000}),chunks=[],duration=replayDuration();
   recorder.ondataavailable=e=>e.data.size&&chunks.push(e.data);
   const blob=await new Promise((resolve,reject)=>{recorder.onstop=()=>resolve(new Blob(chunks,{type:mime}));recorder.onerror=reject;recorder.start();const started=performance.now();const draw=now=>{const offset=Math.min(duration,(now-started)/1000);drawReplayScene(canvas,replaySample(offset));if(offset<duration)requestAnimationFrame(draw);else recorder.stop()};requestAnimationFrame(draw)});
   return {blob,extension:mime.includes('mp4')?'mp4':'webm',mime};
